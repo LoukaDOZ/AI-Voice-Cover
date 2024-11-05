@@ -5,7 +5,7 @@ from gui.components import FileBrowserForm
 
 class GUI():
     def __init__(self):
-        self.__window__ = None
+        self.__window = None
         self.source_file_form = None
         self.voice_sample_form = None
         self.__init_gui_()
@@ -29,16 +29,16 @@ class GUI():
         self.__init_cover_frame__()
 
     def __init_window__(self):
-        self.__window__ = Tk()
-        self.__window__.title("Voice Cover")
-        self.__window__.geometry("500x500")
-        self.__center_window__(self.__window__)
+        self.__window = Tk()
+        self.__window.title("Voice Cover")
+        self.__window.geometry("500x500")
+        self.__center_window__(self.__window)
 
     def __init_load_frame__(self):
-        self.source_file_form = FileBrowserForm(self.__window__, "Select source audio", 0, 0, 1, 1)
+        self.source_file_form = FileBrowserForm(self.__window, "Select source audio", 0, 0, 1, 1)
 
     def __init_cover_frame__(self):
-        self.voice_sample_form = FileBrowserForm(self.__window__, "Select voice sample", 0, 1, 1, 1)
+        self.voice_sample_form = FileBrowserForm(self.__window, "Select voice sample", 0, 1, 1, 1)
 
     def show(self):        
-        self.__window__.mainloop()
+        self.__window.mainloop()

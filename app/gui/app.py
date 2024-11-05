@@ -1,21 +1,32 @@
 from gui.gui import GUI
+from cover.vc import VoiceCover
 
 class VoiceCoverApp():
     def __init__(self):
-        self.vc_data = None
-        self.gui = GUI()
-        self.gui.source_file_form.on_submit.add_listener(self.__preprocess__)
-        self.gui.voice_sample_form.on_submit.add_listener(self.__cover__)
-        self.gui.voice_sample_form.enable(False)
+        self.__vc = VoiceCover()
+        self.__gui = GUI()
+        self.__gui.source_file_form.on_submit.add_listener(self.__preprocess__)
+        self.__gui.voice_sample_form.on_submit.add_listener(self.__cover__)
+        self.__gui.voice_sample_form.enable(False)
     
     def run(self):
-        self.gui.show()
+        self.__gui.show()
 
     def __preprocess__(self, *args):
-        if self.gui.source_file_form.is_valid():
-            print("PREPROCESS "+self.gui.source_file_form.value())
-            self.gui.voice_sample_form.enable(True)
+        self.__gui.voice_sample_form.enable(False)
+
+        if self.__gui.source_file_form.is_valid():
+            audio_file = self.__gui.source_file_form.value()
+            print("PREPROCESS "+audio_file)
+            
+            self.__vc.load_from_source_file(audio_file)
+            self.__vc.preprocess(".tmp/")
+            self.__gui.voice_sample_form.enable(True)
 
     def __cover__(self, *args):
-        if self.gui.voice_sample_form.is_valid():
-            print("COVER "+self.gui.voice_sample_form.value())
+        if self.__gui.voice_sample_form.is_valid():
+            voice_sample = self.__gui.voice_sample_form.value()
+            print("COVER "+voice_sample)
+
+            self.__vc.cover(voice_sample, ".tmp/")
+            self.__vc.merge(".tmp/", 6)
