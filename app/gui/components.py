@@ -96,3 +96,23 @@ class FileBrowserForm():
             self.__submit_btn.state(["!disabled"])
         else:
             self.__submit_btn.state(["disabled"])
+
+class ProgressBar():
+    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, limit = 100):
+        self.__limit = limit
+        self.__progress = IntVar(value=0)
+        self.__progress_bar = None
+        self.__init_gui__(parent, column, row, columnspan, rowspan)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan):
+        self.__progress_bar = ttk.Progressbar(parent, maximum=self.__limit, variable=self.__progress, mode='determinate')
+        self.__progress_bar.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+
+    def reset(self):
+        self.set_progress(0)
+
+    def set_progress(self, progress):
+        if 0 > progress > self.end:
+            raise Exception(f"Invalid progress value: {progress}")
+
+        self.__progress.set(progress)
