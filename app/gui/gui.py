@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 from gui.event import Event
-from gui.components import FileBrowserForm, ProgressBar, AudioPlayer
+from gui.components import FileBrowserForm, DirBrowserForm, ProgressBar, AudioPlayer
 
 class GUI():
     def __init__(self):
@@ -41,7 +41,9 @@ class GUI():
         self.voice_sample_form = FileBrowserForm(self.__window, "Select voice sample", 0, 2, 1, 1)
         self.voice_sample_progress_bar = ProgressBar(self.__window, 0, 3, 1, 1)
 
-        player = AudioPlayer(self.__window, "Player", 0, 4, 1, 1)
+        form = DirBrowserForm(self.__window, "Save output", 0, 4, 1, 1)
+
+        player = AudioPlayer(self.__window, "Player", 0, 5, 1, 1)
         self.audio_player = AudioPlayerManager(self.__window, player)
         self.audio_player.set_audio("/home/doz/Bureau/python/AI-Voice-Cover/.tmp/Instrumentals.wav")
 
