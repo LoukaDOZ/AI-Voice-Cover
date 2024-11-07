@@ -92,11 +92,11 @@ class VoiceCover():
         if self.__instrumental_separator is None:
             self.__instrumental_separator = Separator(log_level=0)
             self.__instrumental_separator.load_model()
-
-        self.progress.step()
        
         instrumental_output_file = os.path.join(output_dir, f"Instrumentals.wav")
         vocal_output_file = os.path.join(output_dir, f"Vocals.wav")
+
+        self.progress.step()
 
         output_files = self.__instrumental_separator.separate(self.source_file)
         os.rename(output_files[0], instrumental_output_file)
@@ -106,14 +106,13 @@ class VoiceCover():
 
         self.instrumental_file = instrumental_output_file
         vocal_audio = VoiceCover.get_audio(vocal_output_file, "wav")
-        audio_len = vocal_audio.duration_seconds
-        start = 0.0
-        end = 0.0
+        count = ceil(self.audio_len / self.max_split_size)
 
         self.progress.step()
 
-        while start < audio_len:
-            end = start + (self.max_split_size if start + self.max_split_size <= audio_len else audio_len - start)
+        for i in range(count):
+            start = i * self.max_split_size
+            end = start + (self.max_split_size if start + self.max_split_size <= self.audio_len else self.audio_len - start)
             vocal_part_file = os.path.join(output_dir, f"Vocals_{start}.wav")
 
             vocal_part = vocal_audio[start * 1000:end * 1000]

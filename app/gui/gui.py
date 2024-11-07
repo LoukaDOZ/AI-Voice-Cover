@@ -9,8 +9,8 @@ class GUI():
         self.after_func = None
         self.source_file_form = None
         self.voice_sample_form = None
-        self.source_progress_bar = None
-        self.voice_sample_progress_bar = None
+
+        self.progress_bar = None
         self.audio_player = None
         self.__init_gui_()
 
@@ -35,20 +35,31 @@ class GUI():
 
         self.after_func = self.__window.after
         
-        self.source_file_form = FileBrowserForm(self.__window, "Select source audio", 0, 0, 1, 1)
-        self.source_progress_bar = ProgressBar(self.__window, 0, 1, 1, 1)
-
+        progress_bar = ProgressBar(self.__window, 0, 0, 10, 1)
+        self.progress_bar = ProgressBarManager(progress_bar)
+        
+        self.source_file_form = FileBrowserForm(self.__window, "Select source audio", 0, 1, 1, 1)
         self.voice_sample_form = FileBrowserForm(self.__window, "Select voice sample", 0, 2, 1, 1)
-        self.voice_sample_progress_bar = ProgressBar(self.__window, 0, 3, 1, 1)
 
-        form = DirBrowserForm(self.__window, "Save output", 0, 4, 1, 1)
+        form = DirBrowserForm(self.__window, "Save output", 0, 3, 1, 1)
 
-        player = AudioPlayer(self.__window, "Player", 0, 5, 1, 1)
+        player = AudioPlayer(self.__window, "Player", 0, 4, 1, 1)
         self.audio_player = AudioPlayerManager(self.__window, player)
         self.audio_player.set_audio("/home/doz/Bureau/python/AI-Voice-Cover/.tmp/Instrumentals.wav")
 
     def show(self):        
         self.__window.mainloop()
+
+class ProgressBarManager():
+    def __init__(self, progress_bar):
+        self.__progress_bar = progress_bar
+    
+    def reset(self):
+        self.__progress_bar.reset()
+    
+    def set_progress(self, progress, text = ""):
+        self.__progress_bar.set_progress(progress)
+        self.__progress_bar.set_text(text)
 
 class AudioPlayerManager():
     def __init__(self, window, audio_player):

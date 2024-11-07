@@ -23,7 +23,7 @@ class VoiceCoverApp():
 
             self.__vc.load_from_source_file(audio_file)
             self.__vc.reset_progress(preprocess=True)
-            self.__run_long_process__(lambda: self.__vc.preprocess(".tmp/"), self.__vc.progress, self.__gui.source_progress_bar, lambda: self.__gui.voice_sample_form.enable(True))
+            self.__run_long_process__(lambda: self.__vc.preprocess(".tmp/"), lambda: self.__gui.voice_sample_form.enable(True))
 
     def __cover__(self, *args):
         if self.__gui.voice_sample_form.is_valid():
@@ -31,24 +31,24 @@ class VoiceCoverApp():
             print("COVER "+voice_sample)
 
             self.__vc.reset_progress(cover=True, merge=True)
-            self.__run_long_process__(lambda: self.__vc.cover(voice_sample, ".tmp/"), self.__vc.progress, self.__gui.voice_sample_progress_bar, self.__merge__)
+            self.__run_long_process__(lambda: self.__vc.cover(voice_sample, ".tmp/"), self.__merge__)
 
     def __merge__(self, *args):
             print("MERGE")
             self.__run_long_process__(lambda: self.__vc.merge(".tmp/", 6), self.__vc.progress, self.__gui.voice_sample_progress_bar, lambda: None)
     
-    def __run_long_process__(self, process, progress, progress_bar, callback):
-            progress_bar.set_progress(0)
+    def __run_long_process__(self, process, callback):
+            self.__gui.progress_bar.reset()
 
             t = JoinNonBlockingThread(target=process)
             t.start()
 
-            self.__update_progress__(1, progress, progress_bar, t.join, callback)
+            self.__update_progress__(1, t.join, callback)
     
-    def __update_progress__(self, timeout, progress, progress_bar, stop_func, callback):
-        progress_bar.set_progress(progress.get())
+    def __update_progress__(self, timeout, stop_func, callback):
+        self.__gui.progress_bar.set_progress(self.__vc.progress.get(), self.__vc.progress.get_label())
 
         if stop_func():
             callback()
         else:
-            self.after(timeout, lambda: self.__update_progress__(timeout, progress, progress_bar, stop_func, callback))
+            self.after(timeout, lambda: self.__update_progress__(timeout, stop_func, callback))
