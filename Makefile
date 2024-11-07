@@ -8,7 +8,7 @@ uninstall:
 	apt remove python3-tk
 	python -m pip uninstall -r requirement.txt
 	# python -m pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre TTS
-	# python -m pip install audiosegment audio-separator onnxruntime
+	# python -m pip install audiosegment audio-separator onnxruntime pygame
 
 clean:
 	find .tmp/ ! -name '.gitkeep' -type f -exec rm -f {} +
