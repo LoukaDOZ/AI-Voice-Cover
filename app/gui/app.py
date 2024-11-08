@@ -12,7 +12,7 @@ class VoiceCoverApp():
         self.__gui.save_as_browser.on_submit.add_listener(self.__save_as__)
 
         self.__gui.voice_browser.enable(False)
-        self.__gui.save_as_browser.enable(False)
+        self.__gui.save_as_browser.enable(True)
         self.after = self.__gui.after_func
     
     def run(self):

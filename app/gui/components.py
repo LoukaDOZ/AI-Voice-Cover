@@ -102,8 +102,13 @@ class SaveAsFileBrowser(Browser):
         self.__save_btn.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
 
     def __open_browser__(self, title, start_dir):
-        start_dir = start_dir #if not self.value() else self.value()
-        return filedialog.asksaveasfilename(initialdir = start_dir, title = title, filetypes=self.__file_types, initialfile=self.__default_file, confirmoverwrite=True)
+        start_file = self.__default_file
+
+        if self.value():
+            start_dir = os.path.dirname(self.value())
+            start_file = os.path.basename(self.value())
+
+        return filedialog.asksaveasfilename(initialdir = start_dir, title = title, filetypes=self.__file_types, initialfile=start_file, confirmoverwrite=True)
     
     def set_error(self, message):
         pass

@@ -15,8 +15,8 @@ class GUI():
         self.save_as_browser = None
         self.audio_player = None
 
-        self.__FILE_TYPES = [("All files", ".*"), ("WAV", ".wav"), ("MP3", ".mp3")]
-        self.__SAVE_FILE_TYPES = [("WAV", ".wav"), ("MP3", ".mp3")]
+        self.__FILE_TYPES = [("WAV", ".wav")]
+        self.__SAVE_FILE_TYPES = [("WAV", ".wav")]
         self.__init_gui_()
 
     def __center_window__(self, window):
