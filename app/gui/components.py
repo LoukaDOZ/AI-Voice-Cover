@@ -1,194 +1,124 @@
 from tkinter import *
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, simpledialog
 from gui.event import Event
 import pygame as pg
 import pygame.mixer as mixer
 import os
 
-class FileBrowser():
-    def __init__(self, parent, title, column = 0, row = 0, columnspan = 1, rowspan = 1):
+class Browser():
+    def __init__(self, parent, title, start_dir = None, default = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        if start_dir is not None and not os.path.isdir(start_dir):
+            raise Exception(f"Invalid directory: {start_dir}")
+
         self.on_value_changed = Event()
-        self.filepath_var = StringVar(value="")
-        self.filepath_var.trace_add("write", self.on_value_changed.invoke)
-        self.error_var = StringVar(value="")
-        self.__filepath_field = None
+        self.on_submit = Event()
+
+        self.__error_var = StringVar(value="")
+        self.__path_var = StringVar(value="")
+        self.__path_var.trace_add("write", self.on_value_changed.invoke)
+
+        if default is not None:
+            self.__path_var.set(default)
+        
+        self.__path_field = None
         self.__browse_btn = None
+        self.__submit_btn = None
+
         self.__title = title
+        self.__start_dir = start_dir if start_dir is not None else os.getcwd()
         self.__init_gui__(parent, column, row, columnspan, rowspan)
     
     def __init_gui__(self, parent, column, row, columnspan, rowspan):
         frame = ttk.Frame(parent)
         frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
 
-        self.__filepath_field = ttk.Entry(frame, textvariable=self.filepath_var)
-        self.__filepath_field.grid(column=0, row=0, columnspan=4, rowspan=1, sticky=(N, W, E, S))
+        self.__path_field = ttk.Entry(frame, textvariable=self.__path_var)
+        self.__path_field.grid(column=0, row=0, columnspan=4, rowspan=1, sticky=(N, W, E, S))
 
         self.__browse_btn = ttk.Button(frame, text="Browse", command=self.__browse_files__)
         self.__browse_btn.grid(column=4, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
 
-        error = ttk.Label(frame, textvariable=self.error_var)
+        self.__submit_btn = ttk.Button(frame, text="Submit", command=self.on_submit.invoke)
+        self.__submit_btn.grid(column=5, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
+
+        error = ttk.Label(frame, textvariable=self.__error_var)
         error.grid(column=0, row=1, columnspan=5, rowspan=1, sticky=(N, W, E, S))
     
     def __browse_files__(self):
-        start_dir = os.getcwd() if not self.filepath_var.get() else os.path.dirname(self.filepath_var.get())
-        filename = filedialog.askopenfilename(initialdir = start_dir, title = self.__title,
-            filetypes = (("All files", "*.*"), ("MP3", "*.mp3*"), ("WAV", "*.wav*")))
+        path = self.__open_browser__(self.__title, self.__start_dir)
         
-        if len(filename) > 0:
-            self.filepath_var.set(filename)
+        if path and len(path) > 0:
+            self.__path_var.set(path)
     
-    def is_valid(self):
-        return os.path.isfile(self.filepath_var.get())
+    def __open_browser__(self, title, start_dir):
+        pass
     
     def value(self):
-        return self.filepath_var.get()
+        return self.__path_var.get()
     
     def set_error(self, message):
-        self.error_var.set(message)
+        self.__error_var.set(message)
     
     def clear_error(self):
-        self.error_var.set("")
+        self.__error_var.set("")
     
     def enable(self, enable):
         if enable:
-            self.__filepath_field.state(["!disabled"])
+            self.__path_field.state(["!disabled"])
             self.__browse_btn.state(["!disabled"])
+            self.__submit_btn.state(["!disabled"])
         else:
-            self.__filepath_field.state(["disabled"])
+            self.__path_field.state(["disabled"])
             self.__browse_btn.state(["disabled"])
+            self.__submit_btn.state(["disabled"])
 
-class DirBrowser():
-    def __init__(self, parent, title, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        self.on_value_changed = Event()
-        self.dirpath_var = StringVar(value="")
-        self.dirpath_var.trace_add("write", self.on_value_changed.invoke)
-        self.error_var = StringVar(value="")
-        self.__dirpath_field = None
-        self.__browse_btn = None
-        self.__title = title
-        self.__init_gui__(parent, column, row, columnspan, rowspan)
+class FileBrowser(Browser):
+    def __init__(self, parent, title, file_types, start_dir = None, default = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        super().__init__(parent, title, start_dir, default, column, row, columnspan, rowspan)
+        self.file_types = file_types
+
+    def __open_browser__(self, title, start_dir):
+        start_dir = start_dir if not self.value() else os.path.dirname(self.value())
+        return filedialog.askopenfilename(initialdir = start_dir, title = title, filetypes = self.file_types)
+
+class DirBrowser(Browser):
+    def __init__(self, parent, title, start_dir = None, default = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        super().__init__(parent, title, start_dir, default, column, row, columnspan, rowspan)
+
+    def __open_browser__(self, title, start_dir):
+        start_dir = start_dir if not self.value() else self.value()
+        return filedialog.askdirectory(initialdir = start_dir, title = title)
+
+class SaveAsFileBrowser(Browser):
+    def __init__(self, parent, title, file_types, start_dir = None, default = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.__file_types = file_types
+        self.__default_file = default
+        self.__save_btn = None
+        super().__init__(parent, title, start_dir, None, column, row, columnspan, rowspan)
+        self.on_value_changed.add_listener(self.on_submit.invoke)
     
     def __init_gui__(self, parent, column, row, columnspan, rowspan):
-        frame = ttk.Frame(parent)
-        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        self.__save_btn = ttk.Button(parent, text="Save", command=self.__browse_files__)
+        self.__save_btn.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
 
-        self.__dirpath_field = ttk.Entry(frame, textvariable=self.dirpath_var)
-        self.__dirpath_field.grid(column=0, row=0, columnspan=4, rowspan=1, sticky=(N, W, E, S))
-
-        self.__browse_btn = ttk.Button(frame, text="Browse", command=self.__browse_files__)
-        self.__browse_btn.grid(column=4, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-
-        error = ttk.Label(frame, textvariable=self.error_var)
-        error.grid(column=0, row=1, columnspan=5, rowspan=1, sticky=(N, W, E, S))
-    
-    def __browse_files__(self):
-        start_dir = os.getcwd() if not self.dirpath_var.get() else os.path.dirname(self.dirpath_var.get())
-        dirname = filedialog.askdirectory(initialdir = start_dir, title = self.__title)
-        
-        if len(dirname) > 0:
-            self.dirpath_var.set(dirname)
-    
-    def is_valid(self):
-        return os.path.isdir(self.dirpath_var.get())
-    
-    def value(self):
-        return self.dirpath_var.get()
+    def __open_browser__(self, title, start_dir):
+        start_dir = start_dir #if not self.value() else self.value()
+        return filedialog.asksaveasfilename(initialdir = start_dir, title = title, filetypes=self.__file_types, initialfile=self.__default_file, confirmoverwrite=True)
     
     def set_error(self, message):
-        self.error_var.set(message)
+        pass
     
     def clear_error(self):
-        self.error_var.set("")
+        pass
     
     def enable(self, enable):
-        if enable:
-            self.__dirpath_field.state(["!disabled"])
-            self.__browse_btn.state(["!disabled"])
-        else:
-            self.__dirpath_field.state(["disabled"])
-            self.__browse_btn.state(["disabled"])
-
-class FileBrowserForm():
-    def __init__(self, parent, label, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        self.__file_browser = None
-        self.__submit_btn = None
-        self.on_submit = Event()
-        self.__init_gui__(parent, label, column, row, columnspan, rowspan)
+        self.__save_btn.state(["!disabled"] if enable else ["disabled"])
     
-    def __init_gui__(self, parent, label, column, row, columnspan, rowspan):
-        frame = ttk.Frame(parent)
-        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
-
-        self.__file_browser = FileBrowser(frame, label, column, row, columnspan, rowspan)
-        self.__file_browser.on_value_changed.add_listener(self.__check_value__)
-
-        self.__submit_btn = ttk.Button(frame, text="Next", command=self.__validate__)
-        self.__submit_btn.grid(column=1, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-    
-    def __check_value__(self, *args):
-        self.__file_browser.clear_error()
-
-        if not self.is_valid():
-            self.__file_browser.set_error("Invalid path")
-
-    def __validate__(self, *args):
-        if self.is_valid():
-            self.on_submit.invoke()
-    
-    def is_valid(self):
-        return self.__file_browser.is_valid()
-    
-    def value(self):
-        return self.__file_browser.value()
-    
-    def enable(self, enable):
-        self.__file_browser.enable(enable)
-
-        if enable:
-            self.__submit_btn.state(["!disabled"])
-        else:
-            self.__submit_btn.state(["disabled"])
-
-class DirBrowserForm():
-    def __init__(self, parent, label, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        self.__dir_browser = None
-        self.__submit_btn = None
-        self.on_submit = Event()
-        self.__init_gui__(parent, label, column, row, columnspan, rowspan)
-    
-    def __init_gui__(self, parent, label, column, row, columnspan, rowspan):
-        frame = ttk.Frame(parent)
-        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
-
-        self.__dir_browser = DirBrowser(frame, label, column, row, columnspan, rowspan)
-        self.__dir_browser.on_value_changed.add_listener(self.__check_value__)
-
-        self.__submit_btn = ttk.Button(frame, text="Next", command=self.__validate__)
-        self.__submit_btn.grid(column=1, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-    
-    def __check_value__(self, *args):
-        self.__dir_browser.clear_error()
-
-        if not self.is_valid():
-            self.__dir_browser.set_error("Invalid path")
-
-    def __validate__(self, *args):
-        if self.is_valid():
-            self.on_submit.invoke()
-    
-    def is_valid(self):
-        return self.__dir_browser.is_valid()
-    
-    def value(self):
-        return self.__dir_browser.value()
-    
-    def enable(self, enable):
-        self.__dir_browser.enable(enable)
-
-        if enable:
-            self.__submit_btn.state(["!disabled"])
-        else:
-            self.__submit_btn.state(["disabled"])
+    def set_default_file(self, path):
+        if not os.path.isfile(path):
+            raise Exception(f"Invalid file: {path}")
+        
+        self.__default_file = path
 
 class ProgressBar():
     def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, limit = 100):
@@ -382,3 +312,34 @@ class AudioPlayer():
     
     def __on_volume_changed__(self, *args):
         self.on_volume_changed.invoke(float(self.__volume_field.get()))
+
+class YesNoDialog(simpledialog.Dialog):
+    def __init__(self, parent, title, question, yes_btn = "Yes", no_btn = "No"):
+        self.__question = question
+        self.__yes_btn = yes_btn
+        self.__no_btn = no_btn
+        self.__result = False
+        super().__init__(parent, title)
+    
+    def body(self, master):
+        label = ttk.Label(master, text=self.__question)
+        label.grid(column=0, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
+        label.pack()
+        return label
+    
+    def buttonbox(self):
+        box = ttk.Frame(self)
+        ttk.Button(box, text=self.__no_btn, width=10, command=self.__no__, default=ACTIVE).pack(side=LEFT, padx=5, pady=5)
+        ttk.Button(box, text=self.__yes_btn, width=10, command=self.__yes__).pack(side=LEFT, padx=5, pady=5)
+        box.pack()
+    
+    def apply(self):
+        self.result = self.__result
+    
+    def __yes__(self, *args):
+        self.__result = True
+        self.ok()
+    
+    def __no__(self, *args):
+        self.__result = False
+        self.ok()

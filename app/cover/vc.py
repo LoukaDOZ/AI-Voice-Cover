@@ -80,7 +80,7 @@ class VoiceCover():
 
         self.progress.reset(limit=limit)
     
-    def preprocess(self, output_dir):
+    def preprocess(self, output_dir, vocals_filename, instrumental_filename, output_extension="wav"):
         if self.source_file is None:
             raise Exception("Not loaded")
 
@@ -93,8 +93,8 @@ class VoiceCover():
             self.__instrumental_separator = Separator(log_level=0)
             self.__instrumental_separator.load_model()
        
-        instrumental_output_file = os.path.join(output_dir, f"Instrumentals.wav")
-        vocal_output_file = os.path.join(output_dir, f"Vocals.wav")
+        instrumental_output_file = os.path.join(output_dir, f"{instrumental_filename}.{output_extension}")
+        vocal_output_file = os.path.join(output_dir, f"{vocals_filename}.{output_extension}")
 
         self.progress.step()
 
@@ -105,7 +105,7 @@ class VoiceCover():
         self.progress.step()
 
         self.instrumental_file = instrumental_output_file
-        vocal_audio = VoiceCover.get_audio(vocal_output_file, "wav")
+        vocal_audio = VoiceCover.get_audio(vocal_output_file, output_extension)
         count = ceil(self.audio_len / self.max_split_size)
 
         self.progress.step()
@@ -113,16 +113,16 @@ class VoiceCover():
         for i in range(count):
             start = i * self.max_split_size
             end = start + (self.max_split_size if start + self.max_split_size <= self.audio_len else self.audio_len - start)
-            vocal_part_file = os.path.join(output_dir, f"Vocals_{start}.wav")
+            vocal_part_file = os.path.join(output_dir, f"{vocals_filename}_{start}.{output_extension}")
 
             vocal_part = vocal_audio[start * 1000:end * 1000]
-            vocal_part.export(vocal_part_file, format="wav")
+            vocal_part.export(vocal_part_file, format=output_extension)
             self.vocal_files.append((vocal_part_file, start))
 
             start = end
             self.progress.step()
     
-    def cover(self, voice_sample_file, output_dir):
+    def cover(self, voice_sample_file, output_dir, covers_filename, output_extension="wav"):
         if not self.is_preprocessed():
             raise Exception("Not preprocessed")
 
@@ -139,12 +139,12 @@ class VoiceCover():
         self.progress.step()
 
         for file, start_sec in self.vocal_files:
-            cover_file = os.path.join(output_dir, f"Cover_{start_sec}.wav")
+            cover_file = os.path.join(output_dir, f"{covers_filename}_{start_sec}.{output_extension}")
             self.__tts.voice_conversion_to_file(source_wav=file, target_wav=voice_sample_file, file_path=cover_file)
             self.cover_files.append((cover_file, start_sec))
             self.progress.step()
     
-    def merge(self, output_dir, vocal_bonus_db = 0):
+    def merge(self, output_dir, output_filename, output_extension="wav", vocal_bonus_db = 0):
         if not self.is_covered():
             raise Exception("Not covered")
 
@@ -153,15 +153,15 @@ class VoiceCover():
 
         self.reset_merge()
 
-        output_file = os.path.join(output_dir, f"Output.wav")
-        output = self.get_audio(self.instrumental_file, "wav")
+        output_file = os.path.join(output_dir, f"{output_filename}.{output_extension}")
+        output = self.get_audio(self.instrumental_file, output_extension)
         output -= vocal_bonus_db
         self.progress.step()
 
         for file, start_sec in self.cover_files:
-            output = output.overlay(self.get_audio(file, "wav"), position=start_sec * 1000)
+            output = output.overlay(self.get_audio(file, output_extension), position=start_sec * 1000)
             self.progress.step()
 
-        output.export(output_file, format="wav")
+        output.export(output_file, format=output_extension)
         self.output_file = output_file
         self.progress.step()
