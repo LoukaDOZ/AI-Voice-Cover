@@ -20,4 +20,4 @@ class ProgressManager():
         self.__label = label if label is not None else self.__label
     
     def get(self):
-        return int(self.__current / self.__limit * 100)
+        return float(self.__current / self.__limit)

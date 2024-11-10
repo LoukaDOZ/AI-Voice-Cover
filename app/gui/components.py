@@ -1,324 +1,563 @@
 from tkinter import *
 from tkinter import ttk, filedialog, simpledialog
 from gui.event import Event
+from gui.coroutine import Couroutine
 import pygame as pg
 import pygame.mixer as mixer
 import os
 
-class Browser():
-    def __init__(self, parent, title, start_dir = None, default = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        if start_dir is not None and not os.path.isdir(start_dir):
-            raise Exception(f"Invalid directory: {start_dir}")
-
-        self.on_value_changed = Event()
-        self.on_submit = Event()
-
-        self.__error_var = StringVar(value="")
-        self.__path_var = StringVar(value="")
-        self.__path_var.trace_add("write", self.on_value_changed.invoke)
-
-        if default is not None:
-            self.__path_var.set(default)
-        
-        self.__path_field = None
-        self.__browse_btn = None
-        self.__submit_btn = None
-
-        self.__title = title
-        self.__start_dir = start_dir if start_dir is not None else os.getcwd()
-        self.__init_gui__(parent, column, row, columnspan, rowspan)
+class Component():
+    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+        self.enabled = True
+        self.__enable_components = []
+        self.__enable_multi_components = []
+        self.__init_gui__(parent, column, row, columnspan, rowspan, *args)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan):
-        frame = ttk.Frame(parent)
-        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
-
-        self.__path_field = ttk.Entry(frame, textvariable=self.__path_var)
-        self.__path_field.grid(column=0, row=0, columnspan=4, rowspan=1, sticky=(N, W, E, S))
-
-        self.__browse_btn = ttk.Button(frame, text="Browse", command=self.__browse_files__)
-        self.__browse_btn.grid(column=4, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-
-        self.__submit_btn = ttk.Button(frame, text="Submit", command=self.on_submit.invoke)
-        self.__submit_btn.grid(column=5, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-
-        error = ttk.Label(frame, textvariable=self.__error_var)
-        error.grid(column=0, row=1, columnspan=5, rowspan=1, sticky=(N, W, E, S))
-    
-    def __browse_files__(self):
-        path = self.__open_browser__(self.__title, self.__start_dir)
-        
-        if path and len(path) > 0:
-            self.__path_var.set(path)
-    
-    def __open_browser__(self, title, start_dir):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, *args):
         pass
     
-    def value(self):
-        return self.__path_var.get()
-    
-    def set_error(self, message):
-        self.__error_var.set(message)
-    
-    def clear_error(self):
-        self.__error_var.set("")
-    
-    def enable(self, enable):
-        if enable:
-            self.__path_field.state(["!disabled"])
-            self.__browse_btn.state(["!disabled"])
-            self.__submit_btn.state(["!disabled"])
+    def __add_enable_component__(self, component):
+        if isinstance(component, Component):
+            self.__enable_multi_components.append(component)
         else:
-            self.__path_field.state(["disabled"])
-            self.__browse_btn.state(["disabled"])
-            self.__submit_btn.state(["disabled"])
-
-class FileBrowser(Browser):
-    def __init__(self, parent, title, file_types, start_dir = None, default = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        super().__init__(parent, title, start_dir, default, column, row, columnspan, rowspan)
-        self.file_types = file_types
-
-    def __open_browser__(self, title, start_dir):
-        start_dir = start_dir if not self.value() else os.path.dirname(self.value())
-        return filedialog.askopenfilename(initialdir = start_dir, title = title, filetypes = self.file_types)
-
-class DirBrowser(Browser):
-    def __init__(self, parent, title, start_dir = None, default = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        super().__init__(parent, title, start_dir, default, column, row, columnspan, rowspan)
-
-    def __open_browser__(self, title, start_dir):
-        start_dir = start_dir if not self.value() else self.value()
-        return filedialog.askdirectory(initialdir = start_dir, title = title)
-
-class SaveAsFileBrowser(Browser):
-    def __init__(self, parent, title, file_types, start_dir = None, default = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        self.__file_types = file_types
-        self.__default_file = default
-        self.__save_btn = None
-        super().__init__(parent, title, start_dir, None, column, row, columnspan, rowspan)
-        self.on_value_changed.add_listener(self.on_submit.invoke)
-    
-    def __init_gui__(self, parent, column, row, columnspan, rowspan):
-        self.__save_btn = ttk.Button(parent, text="Save", command=self.__browse_files__)
-        self.__save_btn.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
-
-    def __open_browser__(self, title, start_dir):
-        start_file = self.__default_file
-
-        if self.value():
-            start_dir = os.path.dirname(self.value())
-            start_file = os.path.basename(self.value())
-
-        return filedialog.asksaveasfilename(initialdir = start_dir, title = title, filetypes=self.__file_types, initialfile=start_file, confirmoverwrite=True)
-    
-    def set_error(self, message):
-        pass
-    
-    def clear_error(self):
-        pass
+            self.__enable_components.append(component)
     
     def enable(self, enable):
-        self.__save_btn.state(["!disabled"] if enable else ["disabled"])
+        self.enabled = enable
+        flag = ["!disabled"] if enable else ["disabled"]
+
+        for component in self.__enable_components:
+            component.state(flag)
+
+        for component in self.__enable_multi_components:
+            component.enable(enable)
+
+class ClickableComponent(Component):
+    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+        self.on_click = Event()
+        super().__init__(parent, column, row, columnspan, rowspan, *args)
+
+class ChangeableComponent(Component):
+    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+        self.on_value_changed = Event()
+        super().__init__(parent, column, row, columnspan, rowspan, *args)
+
+class VariableComponent(ChangeableComponent):
+    def __init__(self, parent, var, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+        self.__trigger_event = True
+        self.__var = var
+        self.__var.trace_add("write", self.__on_value_changed__)
+        super().__init__(parent, column, row, columnspan, rowspan, self.__var, *args)
     
-    def set_default_file(self, path):
-        if not os.path.isfile(path):
-            raise Exception(f"Invalid file: {path}")
+    def get_value(self):
+        return self.__var.get()
+    
+    def set_value(self, value, trigger_event = True):
+        self.__trigger_event = trigger_event
+        self.__var.set(value)
+    
+    def __on_value_changed__(self, *args):
+        self.__before_on_value_changed__()
+
+        if self.__trigger_event:
+            self.on_value_changed.invoke(self.get_value())
+
+        self.__trigger_event = True
+    
+    def __before_on_value_changed__(self):
+        pass
+
+class StringVariableComponent(VariableComponent):
+    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+        super().__init__(parent, StringVar(value=value), column, row, columnspan, rowspan, *args)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, var, *args):
+        pass
+
+class FloatVariableComponent(VariableComponent):
+    def __init__(self, parent, value=0.0, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+        super().__init__(parent, DoubleVar(value=value), column, row, columnspan, rowspan, *args)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, var, *args):
+        pass
+
+class Label(StringVariableComponent):
+    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1):
+        super().__init__(parent, value, column, row, columnspan, rowspan)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, var):
+        label = ttk.Label(parent, textvariable=var)
+        label.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+    
+    def set_value(self, value, trigger_event = False):
+        super().set_value(value, trigger_event)
+
+
+class Button(ClickableComponent):
+    def __init__(self, parent, text, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        super().__init__(parent, column, row, columnspan, rowspan, text)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, text):
+        button = ttk.Button(parent, text=text, command=self.on_click.invoke)
+        button.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        self.__add_enable_component__(button)
+
+class TextEntry(StringVariableComponent):
+    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.on_enter = Event()
+        self.on_focus_lost = Event()
+        super().__init__(parent, value, column, row, columnspan, rowspan)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, var):
+        entry = ttk.Entry(parent, textvariable=var)
+        entry.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        entry.bind("<Return>", self.__on_enter__)
+        entry.bind("<FocusOut>", self.__on_focus_lost__)
+        self.__add_enable_component__(entry)
+    
+    def __on_enter__(self, *args):
+        self.on_enter.invoke(self.get_value())
+    
+    def __on_focus_lost__(self, *args):
+        self.on_focus_lost.invoke(self.get_value())
+
+class FloatEntry(TextEntry):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        if minimum > maximum:
+            raise Exception(f"Invalid minimum: {minimum} < {maximum}")
+            
+        if max_decimals is not None and max_decimals < 0:
+            raise Exception(f"Invalid max decimals: {max_decimals}")
+
+        super().__init__(parent, column=column, row=row, columnspan=columnspan, rowspan=rowspan)
+        self.__round = max_decimals
+        self.minimum = None
+        self.maximum = None
+
+        self.set_minimum(minimum)
+        self.set_maximum(maximum)
+        self.set_value(value)
+    
+    def __round__(self, value):
+        return round(value, self.__round) if self.__round is not None else value
+    
+    def __before_on_value_changed__(self):
+        v = super().get_value()
+
+        if not v:
+            v = self.minimum
         
-        self.__default_file = path
+        try:
+            v = float(v)
+        except:
+            v = self.minimum
+        
+        if v < self.minimum:
+            v = self.minimum
+        elif v > self.maximum:
+            v = self.maximum
 
-class ProgressBar():
-    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, limit = 100):
-        self.__limit = limit
+        v = self.__round__(v)
+        self.set_value(v, False)
+    
+    def __on_enter__(self, *args):
+        self.on_enter.invoke(self.get_value())
+    
+    def __on_focus_lost__(self, *args):
+        self.on_focus_lost.invoke(self.get_value())
+    
+    def get_value(self):
+        return float(super().get_value())
+    
+    def set_value(self, value, trigger_event = True):
+        value = float(value)
 
-        self.__progress = IntVar(value=0)
+        if self.minimum > value or self.maximum < value:
+            raise Exception(f"Invalid float: {self.minimum} <= {value} <= {self.maximum}")
+        
+        super().set_value(str(self.__round__(value)), trigger_event)
+    
+    def set_minimum(self, minimum):
+        self.minimum = self.__round__(minimum)
+    
+    def set_maximum(self, maximum):
+        self.maximum = self.__round__(maximum)
+
+class Scale(FloatVariableComponent):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        if minimum > maximum:
+            raise Exception(f"Invalid minimum: {minimum} < {maximum}")
+
+        self.minimum = minimum
+        self.maximum = maximum
+        super().__init__(parent, value, column, row, columnspan, rowspan)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, var):
+        scale = ttk.Scale(parent, orient=HORIZONTAL, from_=self.minimum, to=self.maximum, variable=var)
+        scale.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        self.__add_enable_component__(scale)
+    
+    def set_value(self, value, trigger_event = True):
+        value = float(value)
+
+        if self.minimum > value or self.maximum < value:
+            raise Exception(f"Invalid float: {self.minimum} <= {value} <= {self.maximum}")
+        
+        super().set_value(value, trigger_event)
+
+class ProgressBar(ClickableComponent):
+    def __init__(self, parent, clickable = False, column = 0, row = 0, columnspan = 1, rowspan = 1):
         self.__progress_bar = None
-
-        self.__text = StringVar(value="")
-        self.__text_label = None
-        self.__init_gui__(parent, column, row, columnspan, rowspan)
+        self.__progress = IntVar(value=0)
+        self.__clickable = clickable
+        super().__init__(parent, column, row, columnspan, rowspan)
     
     def __init_gui__(self, parent, column, row, columnspan, rowspan):
+        self.__progress_bar = ttk.Progressbar(parent, maximum=100, variable=self.__progress, mode='determinate')
+        self.__progress_bar.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        self.__progress_bar.bind("<Button 1>", self.__on_click__)
+        self.__add_enable_component__(self.__progress_bar)
+    
+    def __on_click__(self, event):
+        if self.enabled and self.__clickable:
+            self.on_click.invoke(float(event.x / self.__progress_bar.winfo_width()))
+    
+    def get_value(self):
+        return float(self.__progress.get() / 100.0)
+    
+    def set_value(self, value):
+        value = float(value)
+        
+        if value < 0.0 or value > 1.0:
+            raise Exception(f"Invalid value: 0.0 <= {value} <= 1.0")
+        
+        self.__progress.set(int(value * 100))
+
+class LabelledProgressBar(ClickableComponent):
+    def __init__(self, parent, clickable = False, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.__progress_bar = None
+        self.__label = None
+        super().__init__(parent, column, row, columnspan, rowspan, clickable)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, clickable):
         frame = ttk.Frame(parent)
         frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
 
-        self.__progress_bar = ttk.Progressbar(frame, maximum=self.__limit, variable=self.__progress, mode='determinate')
-        self.__progress_bar.grid(column=0, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
+        self.__progress_bar = ProgressBar(frame, clickable, 0, 0, 4, 1)
+        self.__progress_bar.on_click.add_listener(self.on_click.invoke)
+        self.__add_enable_component__(self.__progress_bar)
 
-        self.__text_label = ttk.Label(frame, textvariable=self.__text)
-        self.__text_label.grid(column=0, row=1, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-
-    def reset(self):
-        self.set_progress(0)
-        self.set_text("")
-
-    def set_progress(self, progress):
-        if 0 > progress > self.end:
-            raise Exception(f"Invalid progress value: {progress}")
-
-        self.__progress.set(progress)
+        self.__label = Label(frame, "", 0, 1, 4, 1)
     
-    def set_text(self, text):
-        self.__text.set(text)
+    def __on_click__(self, event):
+        if self.enabled and self.__clickable:
+            self.on_click.invoke(float(event.x / self.__progress_bar.winfo_width()))
+    
+    def get_value(self):
+        return self.__progress_bar.get_value()
+    
+    def set_value(self, value, label = None):
+        self.__progress_bar.set_value(value)
 
-class AudioPlayer():
-    def __init__(self, parent, label, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        self.on_play = Event()
-        self.on_pause = Event()
-        self.on_rewind = Event()
-        self.on_seek = Event()
-        self.on_music_ends = Event()
-        self.on_volume_changed = Event()
+        if label is not None:
+            self.set_label(label)
+    
+    def set_label(self, label):
+        self.__label.set_value(label)
 
-        self.__play_btn = None
-        self.__pause_btn = None
-        self.__rewind_btn = None
+class TextualScale(ChangeableComponent):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.__scale = None
+        self.__entry = None
+        super().__init__(parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals):
+        frame = ttk.Frame(parent)
+        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        
+        self.__scale = Scale(frame, minimum, maximum, value, 0, 0, 4, 1)
+        self.__scale.on_value_changed.add_listener(self.__on_scale_changed__)
+        self.__add_enable_component__(self.__scale)
+
+        self.__entry = FloatEntry(frame, minimum, maximum, value, max_decimals, 4, 0, 1, 1)
+        self.__entry.on_value_changed.add_listener(self.__on_entry_changed__)
+        self.__entry.on_enter.add_listener(self.__on_entry_changed__)
+        self.__entry.on_focus_lost.add_listener(self.__on_entry_changed__)
+        self.__add_enable_component__(self.__entry)
+    
+    def __on_scale_changed__(self, *args):
+        self.__entry.set_value(args[0][0])
+    
+    def __on_entry_changed__(self, *args):
+        self.__scale.set_value(args[0][0], False)
+        self.on_value_changed.invoke(self.get_value())
+    
+    def get_value(self):
+        return self.__entry.get_value()
+    
+    def set_value(self, value, trigger_event = True):
+        self.__entry.set_value(value, False)
+        self.__scale.set_value(self.__entry.get_value(), False)
+
+        if trigger_event:
+            self.on_value_changed.invoke(self.__entry.get_value())
+
+class TextualProgressBar(ChangeableComponent):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        if maximum == 0.0:
+            raise Exception(f"Invalid maximum: {maximum}")
+
         self.__progress_bar = None
-        self.__pos_field = None
-        self.__volume_field = None
+        self.__entry = None
+        super().__init__(parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals):
+        frame = ttk.Frame(parent)
+        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
 
-        self.__audio_loaded = False
-        self.__paused = False
+        self.__progress_bar = ProgressBar(frame, True, 0, 0, 4, 1)
+        self.__progress_bar.on_click.add_listener(self.__on_click_bar__)
+        self.__add_enable_component__(self.__progress_bar)
+
+        self.__entry = FloatEntry(frame, minimum, maximum, value, max_decimals, 4, 0, 1, 1)
+        self.__entry.on_value_changed.add_listener(self.__on_entry_changed__)
+        self.__entry.on_enter.add_listener(self.__on_entry_changed__)
+        self.__entry.on_focus_lost.add_listener(self.__on_entry_changed__)
+        self.__add_enable_component__(self.__entry)
+    
+    def __on_click_bar__(self, *args):
+        self.__entry.set_value(float(args[0][0] * self.__entry.maximum), trigger_event=False)
+        self.__progress_bar.set_value(float(self.__entry.get_value() / self.__entry.maximum))
+        self.on_value_changed.invoke(self.__entry.get_value())
+    
+    def __on_entry_changed__(self, *args):
+        value = args[0][0]
+        self.__progress_bar.set_value(float(value / self.__entry.maximum))
+        self.on_value_changed.invoke(value)
+    
+    def get_value(self):
+        return self.__entry.get_value()
+    
+    def set_value(self, value, trigger_event = True):
+        self.__entry.set_value(value, False)
+        self.__progress_bar.set_value(float(self.__entry.get_value() / self.__entry.maximum))
+
+        if trigger_event:
+            self.on_value_changed.invoke(self.__entry.get_value())
+    
+    def set_maximum(self, maximum):
+        self.__entry.set_maximum(maximum)
+
+class ExplorerEntry(ChangeableComponent):
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.__entry = None
+        self.__title = title
+        self.__initial_dir = initial_dir
+        super().__init__(parent, column, row, columnspan, rowspan, value, button_text)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, value, button_text):
+        frame = ttk.Frame(parent)
+        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+
+        self.__entry = TextEntry(frame, value, 0, 0, 4, 1)
+        self.__entry.on_value_changed.add_listener(self.on_value_changed.invoke)
+        self.__add_enable_component__(self.__entry)
+
+        button = Button(frame, button_text, 4, 0, 1, 1)
+        button.on_click.add_listener(self.__on_browse__)
+        self.__add_enable_component__(button)
+    
+    def __build_kwargs__(self):
+        kwargs = {}
+
+        if self.__title is not None:
+            kwargs["title"] = self.__title
+
+        if self.__initial_dir is not None:
+            kwargs["initial_dir"] = self.__initial_dir
+        
+        return kwargs
+    
+    def __on_browse__(self, *args):
+        value = self.__open_browser__(**self.__build_kwargs__())
+
+        if value:
+            self.__entry.set_value(value)
+
+    def __open_browser__(self, **kwargs):
+        pass
+    
+    def get_value(self):
+        return self.__entry.get_value()
+    
+    def set_value(self, value, trigger_event = True):
+        self.__entry.set_value(value, trigger_event)
+    
+    def set_initial_dir(self, initial_dir):
+        self.__initial_dir = initial_dir
+
+class FileExplorerEntry(ExplorerEntry):
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, file_types = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.__file_types = file_types
+        super().__init__(parent, value, button_text, title, initial_dir, column, row, columnspan, rowspan)
+    
+    def __build_kwargs__(self):
+        kwargs = super().__build_kwargs__()
+
+        if self.__file_types is not None:
+            kwargs["file_types"] = self.__file_types
+    
+        return kwargs
+
+    def __open_browser__(self, **kwargs):
+        return Dialogs.choose_file(**kwargs)
+
+class DirExplorerEntry(ExplorerEntry):
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        super().__init__(parent, value, button_text, title, initial_dir, column, row, columnspan, rowspan)
+
+    def __open_browser__(self, **kwargs):
+        return Dialogs.choose_dir(**kwargs)
+
+class Dialogs():
+    def __init__(self):
+        raise Exception("Static class")
+    
+    @staticmethod
+    def choose_file(title = "Open file", initial_dir = None, file_types = [("All", ".*")]):
+        initial_dir = os.getcwd() if initial_dir is None else initial_dir
+        return filedialog.askopenfilename(initialdir = initial_dir, title = title, filetypes = file_types)
+    
+    @staticmethod
+    def choose_dir(title = "Open directory", initial_dir = None):
+        initial_dir = os.getcwd() if initial_dir is None else initial_dir
+        return filedialog.askdirectory(initialdir = initial_dir, title = title)
+    
+    @staticmethod
+    def save_as_file(title = "Save as file", initial_dir = None, initial_file = "", file_types = [("All", ".*")], confirm_overwrite = True):
+        initial_dir = os.getcwd() if initial_dir is None else initial_dir
+        return filedialog.asksaveasfilename(initialdir = initial_dir, title = title, filetypes=file_types, initialfile=initial_file, confirmoverwrite=confirm_overwrite)
+
+class AudioPlayer(Component):
+    def __init__(self, parent, inital_volume = 1.0, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.__progress_bar = None
+        self.__volume = None
         self.__audio = None
-
-        self.__progress = IntVar(value=0)
-        self.__pos_var = StringVar(value="0.0")
-        self.__volume_var = StringVar(value="1.0")
-        self.__volume_var.trace_add("write", self.__on_volume_changed__)
+        self.__audio_file = None
+        self.__paused = False
         self.__start_pos = 0.0
         self.__pos_0 = 0.0
-        
+
         self.__MUSIC_END = MUSIC_END = pg.USEREVENT + 1
         mixer.music.set_endevent(self.__MUSIC_END)
-        self.__init_gui__(parent, label, column, row, columnspan, rowspan)
+
+        super().__init__(parent, column, row, columnspan, rowspan, inital_volume)
     
-    def __init_gui__(self, parent, label, column, row, columnspan, rowspan):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, inital_volume):
         frame = ttk.Frame(parent)
         frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
-        frame['borderwidth'] = 2
-        frame['relief'] = 'sunken'
 
-        labell = ttk.Label(frame, text=label)
-        labell.grid(column=0, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
+        play = Button(frame, "Play", 0, 0, 1, 1)
+        play.on_click.add_listener(lambda *args: self.__play__())
+        self.__add_enable_component__(play)
 
-        self.__play_btn = ttk.Button(frame, text="Play", command=self.on_play.invoke)
-        self.__play_btn.grid(column=0, row=1, columnspan=1, rowspan=1, sticky=(N, W, E, S))
+        pause = Button(frame, "Pause", 1, 0, 1, 1)
+        pause.on_click.add_listener(lambda *args: self.__pause__(not self.__paused))
+        self.__add_enable_component__(pause)
 
-        self.__pause_btn = ttk.Button(frame, text="Pause", command=self.on_pause.invoke)
-        self.__pause_btn.grid(column=1, row=1, columnspan=1, rowspan=1, sticky=(N, W, E, S))
+        rewind = Button(frame, "Rewind", 2, 0, 1, 1)
+        rewind.on_click.add_listener(lambda *args: self.__rewind__())
+        self.__add_enable_component__(rewind)
 
-        self.__rewind_btn = ttk.Button(frame, text="Rewind", command=self.on_rewind.invoke)
-        self.__rewind_btn.grid(column=2, row=1, columnspan=1, rowspan=1, sticky=(N, W, E, S))
+        self.__volume = Scale(frame, value=inital_volume, column=3, row=0, columnspan=3, rowspan=1)
+        self.__volume.on_value_changed.add_listener(self.__on_volume_changed__)
+        self.__add_enable_component__(self.__volume)
 
-        self.__volume_field = ttk.Scale(frame, orient=HORIZONTAL, from_=0.0, to=1.0, variable=self.__volume_var)
-        self.__volume_field.grid(column=3, row=1, columnspan=4, rowspan=1, sticky=(N, W, E, S))
-
-        self.__progress_bar = ttk.Progressbar(frame, maximum=100, variable=self.__progress, mode='determinate')
-        self.__progress_bar.grid(column=0, row=2, columnspan=4, rowspan=1, sticky=(N, W, E, S))
-        self.__progress_bar.bind("<Button 1>", self.__on_click_pos__)
-
-        self.__pos_field = ttk.Entry(frame, textvariable=self.__pos_var)
-        self.__pos_field.grid(column=4, row=2, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-        self.__pos_field.bind("<Return>", self.__on_submit_pos__)
-        self.__pos_field.bind("<FocusOut>", self.__on_submit_pos__)
+        self.__progress_bar = TextualProgressBar(frame, max_decimals=3, column=0, row=1, columnspan=6, rowspan=1)
+        self.__progress_bar.on_value_changed.add_listener(lambda *args: self.__seek__(args[0][0]))
+        self.__add_enable_component__(self.__progress_bar)
     
-    def get_audio_len(self):
-        return self.__audio.get_length() if self.__audio_loaded else 0.0
-    
-    def get_pos(self):
-        return self.__start_pos + mixer.music.get_pos() / 1000.0 - self.__pos_0 if self.__audio_loaded else 0.0
-
-    def is_playing(self):
-        return mixer.music.get_busy() if self.__audio_loaded else False
-    
-    def is_paused(self):
-        return self.__paused if self.__audio_loaded else False
-    
-    def load(self, audio_file):
+    def set_audio(self, audio_file):
         if not os.path.isfile(audio_file):
             raise Exception(f"Invalid audio file: {audio_file}")
         
         mixer.music.load(audio_file)
+        mixer.music.set_volume(self.__volume.get_value())
+        mixer.music.play()
+        mixer.music.pause()
+
+        self.__paused = True
         self.__audio = mixer.Sound(audio_file)
-        self.__audio_loaded = True
+        self.__audio_file = audio_file
+        self.__progress_bar.set_maximum(self.__get_audio_len__())
     
-    def play(self):
-        if self.__audio_loaded:
-            mixer.music.play()
+    def set_volume(self, volume):
+        self.__volume.set_value(volume)
     
-    def pause(self, pause):
-        if self.__audio_loaded:
+    def __is_ready__(self):
+        return self.__audio is not None
+
+    def __is_playing__(self):
+        return self.__is_ready__() and mixer.music.get_busy()
+    
+    def __is_paused__(self):
+        return self.__is_ready__() and self.__paused
+    
+    def __get_audio_len__(self):
+        return self.__audio.get_length() if self.__is_ready__() else 0.0
+    
+    def __get_pos__(self):
+        return self.__start_pos + mixer.music.get_pos() / 1000.0 - self.__pos_0 if self.__is_ready__() else 0.0
+    
+    def __play__(self):
+        if self.__is_paused__():
+            self.__pause__(False)
+    
+    def __pause__(self, pause):
+        if self.__is_ready__():
             if pause:
                 mixer.music.pause()
+                Couroutine.instance.stop("play audio")
             else:
                 mixer.music.unpause()
+                Couroutine.instance.start("play audio", self.__update__)
         
             self.__paused = pause
     
-    def rewind(self):
-        self.seek(0.0)
+    def __rewind__(self):
+        self.__seek__(0.0)
 
-    def seek(self, pos):
-        if not self.__audio_loaded:
+    def __seek__(self, pos):
+        if not self.__is_ready__():
             return
+
+        if pos < 0.0 or pos > self.__get_audio_len__():
+            raise Exception(f"Invalid seek pos: 0.0 <= {pos} <= {self.__get_audio_len__()}")
         
-        if 0.0 > pos > self.get_audio_len():
-            raise Exception(f"Invalid seek pos: {pos}")
-        
+        self.__pause__(True)
         mixer.music.rewind()
         mixer.music.set_pos(pos)
         self.__start_pos = pos
         self.__pos_0 = mixer.music.get_pos() / 1000
-    
-    def set_volume(self, volume):
-        if not self.__audio_loaded:
-            return
+        self.__update__()
 
-        if 0.0 > volume > 1.0:
-            raise Exception(f"Invalid volume: {volume}")
-        
-        mixer.music.set_volume(volume)
-        self.__volume_field.set(str(volume))
-
-    def update_progress(self):
-        if self.__audio_loaded:
-            audio_len = self.get_audio_len()
-            pos = max(min(self.get_pos(), audio_len), 0.0)
-            self.__progress.set(pos / audio_len * 100)
-            self.__pos_var.set(round(pos, 3))
-
-            for e in pg.event.get():
-                if e.type == self.__MUSIC_END:
-                    self.on_music_ends.invoke()
-    
-    def __on_submit_pos__(self, *args):
-        if not self.__audio_loaded or self.is_playing():
-            return
-
-        l = self.get_audio_len()
-        v = self.__pos_var.get()
-        vf = 0.0
-
-        if not v:
-            return
-        
-        try:
-            vf = float(v)
-        except:
-            return
-        
-        if vf < 0.0:
-            vf = 0.0
-        elif vf > l:
-            vf = l
-
-        self.on_seek.invoke(round(vf, 3))
-    
-    def __on_click_pos__(self, e):
-        self.on_seek.invoke(round(float(e.x / self.__progress_bar.winfo_width() * self.get_audio_len()), 3))
+    def __on_music_ends__(self):
+        mixer.music.play()
+        self.__rewind__()
     
     def __on_volume_changed__(self, *args):
-        self.on_volume_changed.invoke(float(self.__volume_field.get()))
+        mixer.music.set_volume(args[0][0])
 
-class YesNoDialog(simpledialog.Dialog):
+    def __update__(self):
+        audio_len = self.__get_audio_len__()
+        pos = max(min(self.__get_pos__(), audio_len), 0.0)
+        self.__progress_bar.set_value(pos, trigger_event=False)
+
+        for e in pg.event.get():
+            if e.type == self.__MUSIC_END:
+                self.__on_music_ends__()
+
+"""class YesNoDialog(simpledialog.Dialog):
     def __init__(self, parent, title, question, yes_btn = "Yes", no_btn = "No"):
         self.__question = question
         self.__yes_btn = yes_btn
@@ -347,4 +586,4 @@ class YesNoDialog(simpledialog.Dialog):
     
     def __no__(self, *args):
         self.__result = False
-        self.ok()
+        self.ok()"""
