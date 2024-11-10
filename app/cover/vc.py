@@ -3,71 +3,38 @@ from audio_separator.separator import Separator
 from TTS.api import TTS
 from math import ceil
 from gui.progress import ProgressManager
+from cover.audio import AudioFile, AudioPath
 import os
 import time
 
 class VoiceCover():
-    def __init__(self):
-        self.source_file = None
-        self.instrumental_file = None
-        self.output_file = None
-        self.vocal_files = []
-        self.cover_files = []
-        self.audio_len = 0.0
-        self.max_split_size = 90
+    def __init__(self, output_dir = None, max_split_size = 90):
+        if output_dir is not None:
+            if not os.path.isdir(output_dir):
+                raise Exception(f"Invalid output directory: {output_dir}")
+        else:
+            output_dir = os.getcwd()
+        
+        if max_split_size < 1:
+            raise Exception(f"Invalid max split size: {max_split_size}")
 
+        self.progress = ProgressManager()
+        self.__max_split_size = max_split_size
         self.__instrumental_separator = None
         self.__tts = None
 
-        self.progress = ProgressManager()
+        self.__instrumentals_path = AudioPath(os.path.join(output_dir, "Instrumentals.wav"))
+        self.__vocals_path = AudioPath(os.path.join(output_dir, "Vocals.wav"))
+        self.__cover_path = AudioPath(os.path.join(output_dir, "Cover.wav"))
+        self.__output_path = AudioPath(os.path.join(output_dir, "Output.wav"))
     
     @staticmethod
-    def get_filename(filepath):
-        name = os.path.splitext(os.path.basename(filepath))[0]
-        extension = os.path.splitext(filepath)[1][1:]
-        return name, extension
+    def from_source_file(source_file):
+        return VoiceCoverData(source_file)
     
-    @staticmethod
-    def get_audio(filepath, type):
-        match type:
-            case "mp3":
-                return AudioSegment.from_mp3(filepath)
-            case "wav":
-                return AudioSegment.from_wav(filepath) 
-        
-        return None
-    
-    def load_from_source_file(self, filepath):
-        if not os.path.isfile(filepath):
-            raise Exception(f"Invalid file path: {filepath}")
-        
-        self.audio_len = VoiceCover.get_audio(filepath, VoiceCover.get_filename(filepath)[1]).duration_seconds
-        self.source_file = filepath
-    
-    def is_preprocessed(self):
-        return len(self.vocal_files) > 0
-    
-    def is_covered(self):
-        return len(self.cover_files) > 0
-    
-    def is_merged(self):
-        return self.output_file is not None
-    
-    def reset(self):
-        self.instrumental_file = None
-        self.vocal_files = []
-        self.reset_cover()
-    
-    def reset_cover(self):
-        self.cover_files = []
-        self.reset_merge()
-    
-    def reset_merge(self):
-        self.output_file = None
-    
-    def reset_progress(self, preprocess = False, cover = False, merge = False):
+    def reset_progress(self, data, preprocess = False, cover = False, merge = False):
         limit = 0
-        split_count = ceil(self.audio_len / self.max_split_size)
+        split_count = ceil(AudioFile.get_audio(data.source_path.fullpath, data.source_path.type).duration_seconds / self.__max_split_size)
 
         if preprocess:
             limit += split_count + 3
@@ -80,88 +47,118 @@ class VoiceCover():
 
         self.progress.reset(limit=limit)
     
-    def preprocess(self, output_dir, vocals_filename, instrumental_filename, output_extension="wav"):
-        if self.source_file is None:
-            raise Exception("Not loaded")
-
-        if not os.path.isdir(output_dir):
-            raise Exception(f"Invalid output directory: {output_dir}")
-        
-        self.reset()
+    def preprocess(self, data):
+        data.reset_for_preprocess()
         
         if self.__instrumental_separator is None:
             self.__instrumental_separator = Separator(log_level=0)
             self.__instrumental_separator.load_model()
-       
-        instrumental_output_file = os.path.join(output_dir, f"{instrumental_filename}.{output_extension}")
-        vocal_output_file = os.path.join(output_dir, f"{vocals_filename}.{output_extension}")
 
         self.progress.step()
 
-        output_files = self.__instrumental_separator.separate(self.source_file)
-        os.rename(output_files[0], instrumental_output_file)
-        os.rename(output_files[1], vocal_output_file)
+        output_files = self.__instrumental_separator.separate(data.source_path.fullpath)
+        os.rename(output_files[0], self.__instrumentals_path.fullpath)
+        os.rename(output_files[1], self.__vocals_path.fullpath)
+        data.instrumentals = self.__instrumentals_path.fullpath
+        data.vocals = self.__vocals_path.fullpath
 
         self.progress.step()
 
-        self.instrumental_file = instrumental_output_file
-        vocal_audio = VoiceCover.get_audio(vocal_output_file, output_extension)
-        count = ceil(self.audio_len / self.max_split_size)
+        audio = AudioFile(data.source_path)
+        count = ceil(audio.length / self.__max_split_size)
+        data.vocals_parts = []
 
         self.progress.step()
 
         for i in range(count):
-            start = i * self.max_split_size
-            end = start + (self.max_split_size if start + self.max_split_size <= self.audio_len else self.audio_len - start)
-            vocal_part_file = os.path.join(output_dir, f"{vocals_filename}_{start}.{output_extension}")
+            start = i * self.__max_split_size
+            end = start + (self.__max_split_size if start + self.__max_split_size <= audio.length else audio.length - start)
+            vocal_part_path = os.path.join(self.__vocals_path.dirname, f"{self.__vocals_path.filename}_{start}.{self.__vocals_path.type}")
 
-            vocal_part = vocal_audio[start * 1000:end * 1000]
-            vocal_part.export(vocal_part_file, format=output_extension)
-            self.vocal_files.append((vocal_part_file, start))
+            vocal_part = audio.audio[start * 1000:end * 1000]
+            vocal_part.export(vocal_part_path, format=audio.path.type)
+            data.vocals_parts.append((vocal_part_path, start))
 
             start = end
             self.progress.step()
+        
+        data.is_preprocessed = True
     
-    def cover(self, voice_sample_file, output_dir, covers_filename, output_extension="wav"):
-        if not self.is_preprocessed():
+    def cover(self, voice_sample, data):
+        if not data.is_preprocessed:
             raise Exception("Not preprocessed")
 
-        if not os.path.isdir(output_dir):
-            raise Exception(f"Invalid output directory: {output_dir}")
+        voice_sample = AudioPath(voice_sample)
+        data.reset_for_cover()
 
-        if not os.path.isfile(voice_sample_file) or VoiceCover.get_filename(voice_sample_file)[1] != "wav":
-            raise Exception(f"Invalid sample file: {voice_sample_file}")
+        if voice_sample.type != "wav":
+            raise Exception(f"Invalid sample file type: {voice_sample.fullpath}")
 
         if self.__tts is None:
             self.__tts = TTS(model_name="voice_conversion_models/multilingual/vctk/freevc24", progress_bar=True)
         
-        self.reset_cover()
         self.progress.step()
+        cover_parts = []
 
-        for file, start_sec in self.vocal_files:
-            cover_file = os.path.join(output_dir, f"{covers_filename}_{start_sec}.{output_extension}")
-            self.__tts.voice_conversion_to_file(source_wav=file, target_wav=voice_sample_file, file_path=cover_file)
-            self.cover_files.append((cover_file, start_sec))
+        for file, start_sec in data.vocals_parts:
+            cover_file = os.path.join(self.__cover_path.dirname, f"{self.__cover_path.filename}_{start_sec}.{self.__cover_path.type}")
+            self.__tts.voice_conversion_to_file(source_wav=file, target_wav=voice_sample.fullpath, file_path=cover_file)
+            cover_parts.append((cover_file, start_sec))
             self.progress.step()
+
+        data.cover_parts = cover_parts
+        data.is_covered = True
     
-    def merge(self, output_dir, output_filename, output_extension="wav", vocal_bonus_db = 0):
-        if not self.is_covered():
+    def merge(self, data, output_extension="wav", vocal_bonus_db = 0):
+        if not data.is_covered:
             raise Exception("Not covered")
+        
+        if output_extension not in ["wav"]:
+            raise Exception(f"Invalid output extension: {output_extension}")
 
-        if not os.path.isdir(output_dir):
-            raise Exception(f"Invalid output directory: {output_dir}")
-
-        self.reset_merge()
-
-        output_file = os.path.join(output_dir, f"{output_filename}.{output_extension}")
-        output = self.get_audio(self.instrumental_file, output_extension)
+        data.reset_for_merge()
+        output = AudioFile.get_audio(data.instrumentals, self.__instrumentals_path.type)
         output -= vocal_bonus_db
         self.progress.step()
 
-        for file, start_sec in self.cover_files:
-            output = output.overlay(self.get_audio(file, output_extension), position=start_sec * 1000)
+        for file, start_sec in data.cover_parts:
+            output = output.overlay(AudioFile.get_audio(file, self.__cover_path.type), position=start_sec * 1000)
             self.progress.step()
 
-        output.export(output_file, format=output_extension)
-        self.output_file = output_file
+        output.export(self.__output_path.fullpath, format=output_extension)
+        data.output = self.__output_path.fullpath
+        data.is_merged = True
         self.progress.step()
+
+class VoiceCoverData():
+    def __init__(self, source_file):  
+        if not os.path.isfile(source_file):
+            raise Exception(f"Invalid path: {source_file}")
+          
+        self.source = source_file
+        self.source_path = AudioPath(source_file)
+        self.instrumentals = None
+        self.vocals = None
+        self.vocals_parts = None
+        self.cover_parts = None
+        self.output = None
+
+        self.is_preprocessed = False
+        self.is_covered = False
+        self.is_merged = False
+    
+    def reset_for_preprocess(self):
+        self.instrumentals = None
+        self.vocals = None
+        self.vocals_parts = None
+        self.is_preprocessed = False
+        self.reset_for_cover()
+    
+    def reset_for_cover(self):
+        self.cover_parts = None
+        self.is_covered = False
+        self.reset_for_merge()
+    
+    def reset_for_merge(self):
+        self.output = None
+        self.is_merged = False
