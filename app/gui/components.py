@@ -102,6 +102,20 @@ class Button(ClickableComponent):
         button.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
         self.__add_enable_component__(button)
 
+class Dropdown(StringVariableComponent):
+    def __init__(self, parent, values = [], default = "", column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.__box = None
+        super().__init__(parent, default, column, row, columnspan, rowspan, values)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, var, values):
+        self.__box = ttk.Combobox(parent, textvariable=var, values=values)
+        self.__box.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        self.__box.state(["readonly"])
+        self.__add_enable_component__(self.__box)
+    
+    def set_values(self, values):
+        self.__box["values"] = values
+
 class TextEntry(StringVariableComponent):
     def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1):
         self.on_enter = Event()
@@ -170,11 +184,7 @@ class FloatEntry(TextEntry):
         return float(super().get_value())
     
     def set_value(self, value, trigger_event = True):
-        value = float(value)
-
-        if self.minimum > value or self.maximum < value:
-            raise Exception(f"Invalid float: {self.minimum} <= {value} <= {self.maximum}")
-        
+        value = min(max(float(value), self.minimum), self.maximum)
         super().set_value(str(self.__round__(value)), trigger_event)
     
     def set_minimum(self, minimum):
@@ -198,11 +208,7 @@ class Scale(FloatVariableComponent):
         self.__add_enable_component__(scale)
     
     def set_value(self, value, trigger_event = True):
-        value = float(value)
-
-        if self.minimum > value or self.maximum < value:
-            raise Exception(f"Invalid float: {self.minimum} <= {value} <= {self.maximum}")
-        
+        value = min(max(float(value), self.minimum), self.maximum)
         super().set_value(value, trigger_event)
 
 class ProgressBar(ClickableComponent):
@@ -480,11 +486,12 @@ class AudioPlayer(Component):
     def set_audio(self, audio_file):
         if not os.path.isfile(audio_file):
             raise Exception(f"Invalid audio file: {audio_file}")
-        
+
         mixer.music.load(audio_file)
         mixer.music.set_volume(self.__volume.get_value())
         mixer.music.play()
         mixer.music.pause()
+        self.__rewind__()
 
         self.__paused = True
         self.__audio = mixer.Sound(audio_file)
@@ -523,7 +530,7 @@ class AudioPlayer(Component):
                 Couroutine.instance.start("play audio", self.__update__)
         
             self.__paused = pause
-    
+
     def __rewind__(self):
         self.__seek__(0.0)
 

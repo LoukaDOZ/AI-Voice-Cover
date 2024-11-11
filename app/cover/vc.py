@@ -117,14 +117,20 @@ class VoiceCover():
             raise Exception(f"Invalid output extension: {output_extension}")
 
         data.reset_for_merge()
-        output = AudioFile.get_audio(data.instrumentals, self.__instrumentals_path.type)
-        output -= vocal_bonus_db
+        cover = AudioFile.get_audio(data.cover_parts[0][0], self.__cover_path.type)
         self.progress.step()
 
-        for file, start_sec in data.cover_parts:
-            output = output.overlay(AudioFile.get_audio(file, self.__cover_path.type), position=start_sec * 1000)
+        for i in range(1, len(data.cover_parts)):
+            file, start_sec = data.cover_parts[i]
+            cover = cover.overlay(AudioFile.get_audio(file, self.__cover_path.type), position=start_sec * 1000)
             self.progress.step()
+        
+        cover += vocal_bonus_db
+        cover.export(self.__cover_path.fullpath, format=self.__cover_path.type)
+        data.cover = self.__cover_path.fullpath
+        self.progress.step()
 
+        output = cover.overlay(AudioFile.get_audio(data.instrumentals, self.__instrumentals_path.type))
         output.export(self.__output_path.fullpath, format=output_extension)
         data.output = self.__output_path.fullpath
         data.is_merged = True
@@ -140,6 +146,7 @@ class VoiceCoverData():
         self.instrumentals = None
         self.vocals = None
         self.vocals_parts = None
+        self.cover = None
         self.cover_parts = None
         self.output = None
 
@@ -160,5 +167,6 @@ class VoiceCoverData():
         self.reset_for_merge()
     
     def reset_for_merge(self):
+        self.cover = None
         self.output = None
         self.is_merged = False

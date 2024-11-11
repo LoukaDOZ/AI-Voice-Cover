@@ -7,15 +7,21 @@ import shutil
 
 class VoiceCoverApp():
     def __init__(self):
+        self.__dropdown_values_source_only = ["Source audio"]
+        self.__dropdown_values_all = ["Source audio", "Vocals cover", "Final output"]
+
         self.__vc = VoiceCover(".tmp/")
         self.__gui = GUI()
         self.__gui.source_file_form.on_submit.add_listener(self.__preprocess__)
         self.__gui.voice_sample_form.on_submit.add_listener(self.__cover__)
         self.__gui.save_as_form.on_submit.add_listener(self.__save_as__)
+        self.__gui.audio_player_dropdown.on_value_changed.add_listener(self.__on_audio_dropdown_changed__)
 
         self.__gui.voice_sample_form.enable(False)
         self.__gui.save_as_form.enable(False)
         self.__gui.audio_player.enable(False)
+        self.__gui.audio_player_dropdown.enable(False)
+        self.__gui.audio_player_dropdown.set_values(self.__dropdown_values_source_only)
 
         self.__vc_data = None
     
@@ -26,6 +32,9 @@ class VoiceCoverApp():
         self.__gui.voice_sample_form.enable(False)
         self.__gui.save_as_form.enable(False)
         self.__gui.audio_player.enable(False)
+        self.__gui.audio_player_dropdown.enable(False)
+        self.__gui.audio_player_dropdown.set_values(self.__dropdown_values_source_only)
+        self.__gui.audio_player_dropdown.set_value(self.__dropdown_values_source_only[0])
 
         source_file = args[0][0]
         print("PREPROCESS "+source_file)
@@ -38,6 +47,7 @@ class VoiceCoverApp():
         self.__gui.voice_sample_form.enable(True)
         self.__gui.audio_player.enable(True)
         self.__gui.audio_player.set_audio(self.__vc_data.source_path.fullpath)
+        self.__gui.audio_player_dropdown.enable(True)
 
     def __cover__(self, *args):
         self.__gui.save_as_form.enable(False)
@@ -54,6 +64,8 @@ class VoiceCoverApp():
     
     def __after_merge__(self, *args):
         self.__gui.save_as_form.enable(True)
+        self.__gui.audio_player_dropdown.enable(True)
+        self.__gui.audio_player_dropdown.set_values(self.__dropdown_values_all)
     
     def __save_as__(self, *args):
         if self.__vc_data.is_merged:
@@ -73,3 +85,15 @@ class VoiceCoverApp():
         if stop_func():
             Couroutine.instance.stop("update progress")
             callback()
+    
+    def __on_audio_dropdown_changed__(self, *args):
+        match args[0][0]:
+            case "Source audio":
+                if self.__vc_data:
+                    self.__gui.audio_player.set_audio(self.__vc_data.source_path.fullpath)
+            case "Vocals cover":
+                if self.__vc_data and self.__vc_data.is_merged:
+                    self.__gui.audio_player.set_audio(self.__vc_data.cover)
+            case "Final output":
+                if self.__vc_data and self.__vc_data.is_merged:
+                    self.__gui.audio_player.set_audio(self.__vc_data.output)

@@ -1,6 +1,6 @@
 from tkinter import Tk
 from gui.event import Event
-from gui.components import Button, ProgressBar, AudioPlayer, Dialogs
+from gui.components import Button, ProgressBar, AudioPlayer, Dialogs, Dropdown
 from gui.forms import ChooseAudioFileForm, SaveAsFileForm
 from gui.coroutine import Couroutine
 import os
@@ -17,6 +17,7 @@ class GUI():
         self.voice_sample_form = None
         self.save_as_form = None
         self.audio_player = None
+        self.audio_player_dropdown = None
 
         self.__init_gui_()
 
@@ -45,6 +46,14 @@ class GUI():
         self.voice_sample_form = ChooseAudioFileForm(self.__window, "", 0, 2, 1, 1)
         self.save_as_form = SaveAsFileForm(self.__window, "", 0, 3, 1, 1)
         self.audio_player = AudioPlayer(self.__window, 1.0, 0, 4, 1, 1)
+        self.audio_player_dropdown = Dropdown(self.__window, ["Source audio", "Vocals cover", "Final output"], "Source audio", 0, 5, 1, 1)
 
     def show(self):        
         self.__window.mainloop()
+    
+    def set_audio_dropdown_values(self, source_only = False):
+        if source_only:
+            self.audio_player_dropdown.set_values(["Source audio"])
+            self.audio_player_dropdown.set_value("Source audio")
+        else:
+            self.audio_player_dropdown.set_values(["Source audio", "Vocals cover", "Final output"])
