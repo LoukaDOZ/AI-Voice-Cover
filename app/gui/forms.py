@@ -28,6 +28,8 @@ class ChooseAudioFileForm(Form):
     def __init_gui__(self, parent, column, row, columnspan, rowspan, value):
         frame = ttk.Frame(parent)
         frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        Component.configure(frame, 1, columns="all", rows="all")
+        Component.configure(frame, 5, columns=0)
 
         self.__explorer = FileExplorerEntry(frame, value, file_types=[("WAV", ".wav")], column=0, row=0, columnspan=5, rowspan=1)
         self.__explorer.on_value_changed.add_listener(self.__on_value_changed__)

@@ -22,6 +22,14 @@ class Component():
         else:
             self.__enable_components.append(component)
     
+    @staticmethod
+    def configure(component, weight, columns = None, rows = None):
+        if columns is not None:
+            component.columnconfigure(columns, weight=weight)
+
+        if rows is not None:
+            component.rowconfigure(rows, weight=weight)
+    
     def enable(self, enable):
         self.enabled = enable
         flag = ["!disabled"] if enable else ["disabled"]
@@ -248,6 +256,7 @@ class LabelledProgressBar(ClickableComponent):
     def __init_gui__(self, parent, column, row, columnspan, rowspan, clickable):
         frame = ttk.Frame(parent)
         frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        Component.configure(frame, 1, columns="all", rows="all")
 
         self.__progress_bar = ProgressBar(frame, clickable, 0, 0, 4, 1)
         self.__progress_bar.on_click.add_listener(self.on_click.invoke)
@@ -271,43 +280,6 @@ class LabelledProgressBar(ClickableComponent):
     def set_label(self, label):
         self.__label.set_value(label)
 
-class TextualScale(ChangeableComponent):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        self.__scale = None
-        self.__entry = None
-        super().__init__(parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals)
-    
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals):
-        frame = ttk.Frame(parent)
-        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
-        
-        self.__scale = Scale(frame, minimum, maximum, value, 0, 0, 4, 1)
-        self.__scale.on_value_changed.add_listener(self.__on_scale_changed__)
-        self.__add_enable_component__(self.__scale)
-
-        self.__entry = FloatEntry(frame, minimum, maximum, value, max_decimals, 4, 0, 1, 1)
-        self.__entry.on_value_changed.add_listener(self.__on_entry_changed__)
-        self.__entry.on_enter.add_listener(self.__on_entry_changed__)
-        self.__entry.on_focus_lost.add_listener(self.__on_entry_changed__)
-        self.__add_enable_component__(self.__entry)
-    
-    def __on_scale_changed__(self, *args):
-        self.__entry.set_value(args[0][0])
-    
-    def __on_entry_changed__(self, *args):
-        self.__scale.set_value(args[0][0], False)
-        self.on_value_changed.invoke(self.get_value())
-    
-    def get_value(self):
-        return self.__entry.get_value()
-    
-    def set_value(self, value, trigger_event = True):
-        self.__entry.set_value(value, False)
-        self.__scale.set_value(self.__entry.get_value(), False)
-
-        if trigger_event:
-            self.on_value_changed.invoke(self.__entry.get_value())
-
 class TextualProgressBar(ChangeableComponent):
     def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
         if maximum == 0.0:
@@ -320,6 +292,8 @@ class TextualProgressBar(ChangeableComponent):
     def __init_gui__(self, parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals):
         frame = ttk.Frame(parent)
         frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        Component.configure(frame, 4, columns=0)
+        Component.configure(frame, 1, columns=4, rows="all")
 
         self.__progress_bar = ProgressBar(frame, True, 0, 0, 4, 1)
         self.__progress_bar.on_click.add_listener(self.__on_click_bar__)
@@ -354,6 +328,45 @@ class TextualProgressBar(ChangeableComponent):
     def set_maximum(self, maximum):
         self.__entry.set_maximum(maximum)
 
+class TextualScale(ChangeableComponent):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+        self.__scale = None
+        self.__entry = None
+        super().__init__(parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals)
+    
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals):
+        frame = ttk.Frame(parent)
+        frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        Component.configure(frame, 4, columns=0)
+        Component.configure(frame, 1, columns=4, rows="all")
+        
+        self.__scale = Scale(frame, minimum, maximum, value, 0, 0, 4, 1)
+        self.__scale.on_value_changed.add_listener(self.__on_scale_changed__)
+        self.__add_enable_component__(self.__scale)
+
+        self.__entry = FloatEntry(frame, minimum, maximum, value, max_decimals, 4, 0, 1, 1)
+        self.__entry.on_value_changed.add_listener(self.__on_entry_changed__)
+        self.__entry.on_enter.add_listener(self.__on_entry_changed__)
+        self.__entry.on_focus_lost.add_listener(self.__on_entry_changed__)
+        self.__add_enable_component__(self.__entry)
+    
+    def __on_scale_changed__(self, *args):
+        self.__entry.set_value(args[0][0])
+    
+    def __on_entry_changed__(self, *args):
+        self.__scale.set_value(args[0][0], False)
+        self.on_value_changed.invoke(self.get_value())
+    
+    def get_value(self):
+        return self.__entry.get_value()
+    
+    def set_value(self, value, trigger_event = True):
+        self.__entry.set_value(value, False)
+        self.__scale.set_value(self.__entry.get_value(), False)
+
+        if trigger_event:
+            self.on_value_changed.invoke(self.__entry.get_value())
+
 class ExplorerEntry(ChangeableComponent):
     def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
         self.__entry = None
@@ -364,6 +377,8 @@ class ExplorerEntry(ChangeableComponent):
     def __init_gui__(self, parent, column, row, columnspan, rowspan, value, button_text):
         frame = ttk.Frame(parent)
         frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        Component.configure(frame, 4, columns=0)
+        Component.configure(frame, 1, columns=4, rows="all")
 
         self.__entry = TextEntry(frame, value, 0, 0, 4, 1)
         self.__entry.on_value_changed.add_listener(self.on_value_changed.invoke)
@@ -462,6 +477,9 @@ class AudioPlayer(Component):
     def __init_gui__(self, parent, column, row, columnspan, rowspan, inital_volume):
         frame = ttk.Frame(parent)
         frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        Component.configure(frame, 1, columns=[0, 1, 2], rows="all")
+        Component.configure(frame, 3, columns=3)
+        Component.configure(frame, 6, rows=1)
 
         play = Button(frame, "Play", 0, 0, 1, 1)
         play.on_click.add_listener(lambda *args: self.__play__())
