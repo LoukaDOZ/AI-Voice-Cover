@@ -12,4 +12,5 @@ uninstall:
 
 clean:
 	find .tmp/ ! -name '.gitkeep' -type f -exec rm -f {} +
+	find outputs/ ! -name '.gitkeep' -type f -exec rm -f {} +
 	find app/ -name '__pycache__' -type d -exec rm -rf {} +

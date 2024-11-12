@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import Tk, ttk
 from gui.event import Event
-from gui.components import Component, Frame, LabelledFrame, Button, ProgressBar, AudioPlayer, Dialogs, Dropdown, TextEntry
+from gui.components import Component, Frame, LabelledFrame, Button, LabelledProgressBar, AudioPlayer, Dialogs, Dropdown, TextEntry
 from gui.forms import ChooseAudioFileForm, CoverForm, SaveAsFileForm
 from gui.coroutine import Couroutine
 import os
@@ -35,8 +35,8 @@ class GUI(Frame):
         s.configure('mBlue.TFrame', background='blue')
 
         self.tkframe = self.__window
-        self.configure(10, columns=0, rows=0)
-        self.configure(1, columns=1)
+        self.configure(3, columns=0)
+        self.configure(1, columns=1, rows=0)
 
         lframe = Frame(self.__window, 0, 0, 1, 1)
         lframe.configure(1, columns=0)
@@ -44,13 +44,11 @@ class GUI(Frame):
         self.source_file_form = ChooseAudioFileForm(lframe.tkframe, "", 0, 0, 1, 1)
         self.cover_form = CoverForm(lframe.tkframe, "", 0, 1, 1, 1)
         self.save_as_form = SaveAsFileForm(lframe.tkframe, "", 0, 2, 1, 1)
-        a = TextEntry(lframe.tkframe, "", 300, 0, 3, 1, 1)
-        a.on_value_changed.add_listener(lambda x: print(x))
 
         rframe = Frame(self.__window, 1, 0, 1, 1)
         rframe.configure(1, columns=0)
 
-        self.progress_bar = ProgressBar(rframe.tkframe, False, 0, 0, 1, 1)
+        self.progress_bar = LabelledProgressBar(rframe.tkframe, False, 0, 0, 1, 1)
         self.audio_player_dropdown = Dropdown(rframe.tkframe, [], "", 0, 1, 1, 1)
         self.audio_player = AudioPlayer(rframe.tkframe, 1.0, column=0, row=2, columnspan=1, rowspan=1)
 
