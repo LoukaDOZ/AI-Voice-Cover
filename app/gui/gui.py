@@ -1,12 +1,12 @@
 from tkinter import *
 from tkinter import Tk, ttk
 from gui.event import Event
-from gui.components import Component, Button, ProgressBar, AudioPlayer, Dialogs, Dropdown
-from gui.forms import ChooseAudioFileForm, SaveAsFileForm
+from gui.components import Component, Frame, LabelledFrame, Button, ProgressBar, AudioPlayer, Dialogs, Dropdown
+from gui.forms import ChooseAudioFileForm, CoverForm, SaveAsFileForm
 from gui.coroutine import Couroutine
 import os
 
-class GUI():
+class GUI(Frame):
     def __init__(self):
         self.on_request_preprocess = Event()
         self.on_request_cover = Event()
@@ -15,38 +15,37 @@ class GUI():
         self.__window = None
         self.progress_bar = None
         self.source_file_form = None
-        self.voice_sample_form = None
+        self.cover_form = None
         self.save_as_form = None
         self.audio_player = None
         self.audio_player_dropdown = None
 
-        self.__init_gui_()
+        super().__init__(self, None)
 
-    def __init_gui_(self):
+    def __init_gui__(self, *args):
         self.__window = Tk()
         self.__window.title("Voice Cover")
         self.__window.geometry("700x500")
         self.__center_window__(self.__window)
-
-        Component.configure(self.__window, 1, columns="all", rows="all")
-        Component.configure(self.__window, 3, columns=0)
         Couroutine.init(self.__window.after)
 
-        lpart = ttk.Frame(self.__window)
-        lpart.grid(column=0, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-        Component.configure(lpart, 1, columns="all", rows="all")
+        self.tkframe = self.__window
+        self.configure(1, columns="all", rows="all")
+        self.configure(2, columns=0)
 
-        self.source_file_form = ChooseAudioFileForm(lpart, "", 0, 0, 1, 1)
-        self.voice_sample_form = ChooseAudioFileForm(lpart, "", 0, 1, 1, 1)
-        self.save_as_form = SaveAsFileForm(lpart, "", 0, 2, 1, 1)
+        lpart = Frame(self.__window, 0, 0, 1, 1)
+        lpart.configure(1, columns="all", rows="all")
 
-        rpart = ttk.Frame(self.__window)
-        rpart.grid(column=1, row=0, columnspan=1, rowspan=1, sticky=(N, W, E, S))
-        Component.configure(rpart, 1, columns="all", rows="all")
+        self.source_file_form = ChooseAudioFileForm(lpart.tkframe, "", 0, 0, 1, 1)
+        self.cover_form = CoverForm(lpart.tkframe, "", 0, 1, 1, 1)
+        self.save_as_form = SaveAsFileForm(lpart.tkframe, "", 0, 2, 1, 1)
 
-        self.progress_bar = ProgressBar(rpart, False, 1, 0, 1, 1)
-        self.audio_player_dropdown = Dropdown(rpart, ["Source audio", "Vocals cover", "Final output"], "Source audio", 1, 1, 1, 1)
-        self.audio_player = AudioPlayer(rpart, 1.0, 1, 2, 1, 1)
+        rpart = Frame(self.__window, 1, 0, 1, 1)
+        rpart.configure(1, columns="all", rows="all")
+
+        self.progress_bar = ProgressBar(rpart.tkframe, False, 1, 0, 1, 1)
+        self.audio_player_dropdown = Dropdown(rpart.tkframe, ["Source audio", "Vocals cover", "Final output"], "Source audio", 1, 1, 1, 1)
+        self.audio_player = AudioPlayer(rpart.tkframe, 1.0, 1, 2, 1, 1)
 
     def __center_window__(self, window):
         window.update_idletasks()
