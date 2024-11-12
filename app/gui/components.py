@@ -6,6 +6,7 @@ import pygame as pg
 import pygame.mixer as mixer
 import os
 import math
+import time
 
 class Component():
     def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
@@ -58,15 +59,15 @@ class VariableComponent(ChangeableComponent):
         self.__var.set(value)
     
     def __on_value_changed__(self, *args):
-        self.__before_on_value_changed__()
+        accepted = self.__before_on_value_changed__(self.__trigger_event)
 
-        if self.__trigger_event:
+        if accepted and self.__trigger_event:
             self.on_value_changed.invoke(self.get_value())
 
         self.__trigger_event = True
     
-    def __before_on_value_changed__(self):
-        pass
+    def __before_on_value_changed__(self, trigger_event):
+        return True
 
 class StringVariableComponent(VariableComponent):
     def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
@@ -146,9 +147,14 @@ class Dropdown(StringVariableComponent):
         self.__box["values"] = values
 
 class TextEntry(StringVariableComponent):
-    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+    def __init__(self, parent, value="", change_timeout = 0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+        if change_timeout < 0:
+            raise Exception(f"Invalid change timeout: 0 < {change_timeout}")
+
         self.on_enter = Event()
         self.on_focus_lost = Event()
+        self.__change_timeout = change_timeout
+        self.__co_id = None
         super().__init__(parent, value, column, row, columnspan, rowspan, sticky)
     
     def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var):
@@ -156,7 +162,29 @@ class TextEntry(StringVariableComponent):
         entry.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         entry.bind("<Return>", self.__on_enter__)
         entry.bind("<FocusOut>", self.__on_focus_lost__)
+        self.on_value_changed.add_listener(self.__kill_co__)
         self.__add_enable_component__(entry)
+    
+    def __before_on_value_changed__(self, trigger_event):
+        if not trigger_event:
+            return True
+
+        self.__kill_co__()
+        if self.__change_timeout > 0:
+            self.__co_id = Couroutine.instance.timeout(self.__trigger_value_changed__, self.__change_timeout)
+            return False
+        
+        return True
+    
+    def __trigger_value_changed__(self, *args):
+        if self.__co_id is not None:
+            self.__kill_co__()
+            self.on_value_changed.invoke(self.get_value())
+    
+    def __kill_co__(self, *args):
+        if self.__co_id is not None:
+            Couroutine.instance.stop(self.__co_id)
+            self.__co_id = None
     
     def __on_enter__(self, *args):
         self.on_enter.invoke(self.get_value())
@@ -165,14 +193,14 @@ class TextEntry(StringVariableComponent):
         self.on_focus_lost.invoke(self.get_value())
 
 class FloatEntry(TextEntry):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, change_timeout = 0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         if minimum > maximum:
             raise Exception(f"Invalid minimum: {minimum} < {maximum}")
             
         if max_decimals is not None and max_decimals < 0:
             raise Exception(f"Invalid max decimals: {max_decimals}")
 
-        super().__init__(parent, column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
+        super().__init__(parent, change_timeout=change_timeout, column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__round = max_decimals
         self.minimum = None
         self.maximum = None
@@ -184,7 +212,7 @@ class FloatEntry(TextEntry):
     def __round__(self, value):
         return math.floor(value * 10 ** self.__round) / 10 ** self.__round
     
-    def __before_on_value_changed__(self):
+    def __trigger_value_changed__(self, *args):
         v = super().get_value()
 
         if not v:
@@ -202,6 +230,7 @@ class FloatEntry(TextEntry):
 
         v = self.__round__(v)
         self.set_value(v, False)
+        super().__trigger_value_changed__(*args)
     
     def __on_enter__(self, *args):
         self.on_enter.invoke(self.get_value())
@@ -302,15 +331,15 @@ class LabelledProgressBar(ClickableComponent):
         self.__label.set_value(label)
 
 class TextualProgressBar(ChangeableComponent):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, change_timeout = 300, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         if maximum == 0.0:
             raise Exception(f"Invalid maximum: {maximum}")
 
         self.__progress_bar = None
         self.__entry = None
-        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, change_timeout)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, change_timeout):
         frame = Frame(parent, column, row, columnspan, rowspan, sticky)
         frame.configure(1, columns=1, rows=0)
         frame.configure(4, columns=0)
@@ -319,7 +348,7 @@ class TextualProgressBar(ChangeableComponent):
         self.__progress_bar.on_click.add_listener(self.__on_click_bar__)
         self.__add_enable_component__(self.__progress_bar)
 
-        self.__entry = FloatEntry(frame.tkframe, minimum, maximum, value, max_decimals, 1, 0, 1, 1)
+        self.__entry = FloatEntry(frame.tkframe, minimum, maximum, value, max_decimals, change_timeout, 1, 0, 1, 1)
         self.__entry.on_value_changed.add_listener(self.__on_entry_changed__)
         self.__entry.on_enter.add_listener(self.__on_entry_changed__)
         self.__entry.on_focus_lost.add_listener(self.__on_entry_changed__)
@@ -349,12 +378,12 @@ class TextualProgressBar(ChangeableComponent):
         self.__entry.set_maximum(maximum)
 
 class TextualScale(ChangeableComponent):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, change_timeout = 300, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__scale = None
         self.__entry = None
-        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, change_timeout)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, change_timeout):
         frame = Frame(parent, column, row, columnspan, rowspan, sticky)
         frame.configure(1, columns=1, rows=0)
         frame.configure(4, columns=0)
@@ -363,7 +392,7 @@ class TextualScale(ChangeableComponent):
         self.__scale.on_value_changed.add_listener(self.__on_scale_changed__)
         self.__add_enable_component__(self.__scale)
 
-        self.__entry = FloatEntry(frame.tkframe, minimum, maximum, value, max_decimals, 1, 0, 1, 1)
+        self.__entry = FloatEntry(frame.tkframe, minimum, maximum, value, max_decimals, change_timeout, 1, 0, 1, 1)
         self.__entry.on_value_changed.add_listener(self.__on_entry_changed__)
         self.__entry.on_enter.add_listener(self.__on_entry_changed__)
         self.__entry.on_focus_lost.add_listener(self.__on_entry_changed__)
@@ -387,16 +416,16 @@ class TextualScale(ChangeableComponent):
             self.on_value_changed.invoke(self.__entry.get_value())
 
 class LabelledTextualScale(ChangeableComponent):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, label="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, label="", change_timeout = 300, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__scale = None
-        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, label)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, label, change_timeout)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, label_text):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, label_text, change_timeout):
         frame = LabelledFrame(parent, label_text, column, row, columnspan, rowspan, sticky)
         frame.configure(1, columns=0, rows=0)
         self.__add_enable_component__(frame)
         
-        self.__scale = TextualScale(frame.tkframe, minimum, maximum, value, max_decimals, 0, 0, 1, 1)
+        self.__scale = TextualScale(frame.tkframe, minimum, maximum, value, max_decimals, change_timeout, 0, 0, 1, 1)
         self.__scale.on_value_changed.add_listener(self.on_value_changed.invoke)
         self.__add_enable_component__(self.__scale)
     
@@ -407,18 +436,18 @@ class LabelledTextualScale(ChangeableComponent):
         self.__scale.set_value(self.__entry.get_value(), trigger_event)
 
 class ExplorerEntry(ChangeableComponent):
-    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, change_timeout = 0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__entry = None
         self.__title = title
         self.__initial_dir = initial_dir
-        super().__init__(parent, column, row, columnspan, rowspan, sticky, value, button_text)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, value, button_text, change_timeout)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, value, button_text):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, value, button_text, change_timeout):
         frame = Frame(parent, column, row, columnspan, rowspan, sticky)
         frame.configure(1, columns=1, rows=0)
         frame.configure(4, columns=0)
 
-        self.__entry = TextEntry(frame.tkframe, value, 0, 0, 1, 1)
+        self.__entry = TextEntry(frame.tkframe, value, change_timeout, 0, 0, 1, 1)
         self.__entry.on_value_changed.add_listener(self.on_value_changed.invoke)
         self.__add_enable_component__(self.__entry)
 
@@ -456,9 +485,9 @@ class ExplorerEntry(ChangeableComponent):
         self.__initial_dir = initial_dir
 
 class FileExplorerEntry(ExplorerEntry):
-    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, file_types = None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, file_types = None, change_timeout = 0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__file_types = file_types
-        super().__init__(parent, value, button_text, title, initial_dir, column, row, columnspan, rowspan, sticky)
+        super().__init__(parent, value, button_text, title, initial_dir, change_timeout, column, row, columnspan, rowspan, sticky)
     
     def __build_kwargs__(self):
         kwargs = super().__build_kwargs__()
@@ -472,8 +501,8 @@ class FileExplorerEntry(ExplorerEntry):
         return Dialogs.choose_file(**kwargs)
 
 class DirExplorerEntry(ExplorerEntry):
-    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
-        super().__init__(parent, value, button_text, title, initial_dir, column, row, columnspan, rowspan, sticky)
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, change_timeout = 0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+        super().__init__(parent, value, button_text, title, initial_dir, change_timeout, column, row, columnspan, rowspan, sticky)
 
     def __open_browser__(self, **kwargs):
         return Dialogs.choose_dir(**kwargs)
@@ -498,7 +527,7 @@ class Dialogs():
         return filedialog.asksaveasfilename(initialdir = initial_dir, title = title, filetypes=file_types, initialfile=initial_file, confirmoverwrite=confirm_overwrite)
 
 class AudioPlayer(Component):
-    def __init__(self, parent, inital_volume = 1.0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+    def __init__(self, parent, inital_volume = 1.0, change_timeout = 300, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__progress_bar = None
         self.__volume = None
         self.__audio = None
@@ -506,13 +535,14 @@ class AudioPlayer(Component):
         self.__paused = False
         self.__start_pos = 0.0
         self.__pos_0 = 0.0
+        self.__co_id = None
 
         self.__MUSIC_END = MUSIC_END = pg.USEREVENT + 1
         mixer.music.set_endevent(self.__MUSIC_END)
 
-        super().__init__(parent, column, row, columnspan, rowspan, sticky, inital_volume)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, inital_volume, change_timeout)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, inital_volume):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, inital_volume, change_timeout):
         frame = Frame(parent, column, row, columnspan, rowspan, sticky)
         frame.configure(1, columns=[0, 1, 2], rows=[0, 1])
         frame.configure(3, columns=3)
@@ -533,7 +563,7 @@ class AudioPlayer(Component):
         self.__volume.on_value_changed.add_listener(self.__on_volume_changed__)
         self.__add_enable_component__(self.__volume)
 
-        self.__progress_bar = TextualProgressBar(frame.tkframe, max_decimals=3, column=0, row=1, columnspan=4, rowspan=1)
+        self.__progress_bar = TextualProgressBar(frame.tkframe, max_decimals=3, change_timeout=change_timeout, column=0, row=1, columnspan=4, rowspan=1)
         self.__progress_bar.on_value_changed.add_listener(lambda *args: self.__seek__(args[0][0]))
         self.__add_enable_component__(self.__progress_bar)
     
@@ -578,10 +608,10 @@ class AudioPlayer(Component):
         if self.__is_ready__():
             if pause:
                 mixer.music.pause()
-                Couroutine.instance.stop("play audio")
+                Couroutine.instance.stop(self.__co_id)
             else:
                 mixer.music.unpause()
-                Couroutine.instance.start("play audio", self.__update__)
+                self.__co_id = Couroutine.instance.start(self.__update__)
         
             self.__paused = pause
 

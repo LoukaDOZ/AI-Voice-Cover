@@ -74,7 +74,7 @@ class CoverForm(Form):
         self.__explorer_error = Label(frame.tkframe, "", column=0, row=1, columnspan=1, rowspan=1)
         self.__add_enable_component__(self.__explorer_error)
 
-        self.__db_scale = LabelledTextualScale(frame.tkframe, -20.0, 20.0, 0.0, 1, "Vocals bonus volume", 0, 2, 1, 1)
+        self.__db_scale = LabelledTextualScale(frame.tkframe, -20.0, 20.0, 0.0, 1, "Vocals bonus volume", column=0, row=2, columnspan=1, rowspan=1)
         self.__add_enable_component__(self.__db_scale)
 
         button = Button(frame.tkframe, "Submit", 0, 3, 1, 1)

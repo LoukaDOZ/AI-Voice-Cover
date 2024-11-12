@@ -79,7 +79,7 @@ class VoiceCoverApp():
             t = JoinNonBlockingThread(target=process)
             t.start()
 
-            Couroutine.instance.start("update progress", self.__update_progress__, 1, t.join, callback)
+            Couroutine.instance.start(self.__update_progress__, 1, "update progress", (t.join, callback))
     
     def __update_progress__(self, stop_func, callback):
         self.__gui.progress_bar.set_value(self.__vc.progress.get())
