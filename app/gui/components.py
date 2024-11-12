@@ -7,13 +7,13 @@ import pygame.mixer as mixer
 import os
 
 class Component():
-    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
         self.enabled = True
         self.__enable_components = []
         self.__enable_multi_components = []
-        self.__init_gui__(parent, column, row, columnspan, rowspan, *args)
+        self.__init_gui__(parent, column, row, columnspan, rowspan, sticky, *args)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, *args):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, *args):
         pass
     
     def __add_enable_component__(self, component):
@@ -21,14 +21,6 @@ class Component():
             self.__enable_multi_components.append(component)
         else:
             self.__enable_components.append(component)
-    
-    @staticmethod
-    def configure(component, weight, columns = None, rows = None):
-        if columns is not None:
-            component.columnconfigure(columns, weight=weight)
-
-        if rows is not None:
-            component.rowconfigure(rows, weight=weight)
     
     def enable(self, enable):
         self.enabled = enable
@@ -41,21 +33,21 @@ class Component():
             component.enable(enable)
 
 class ClickableComponent(Component):
-    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
         self.on_click = Event()
-        super().__init__(parent, column, row, columnspan, rowspan, *args)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, *args)
 
 class ChangeableComponent(Component):
-    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
         self.on_value_changed = Event()
-        super().__init__(parent, column, row, columnspan, rowspan, *args)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, *args)
 
 class VariableComponent(ChangeableComponent):
-    def __init__(self, parent, var, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+    def __init__(self, parent, var, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
         self.__trigger_event = True
         self.__var = var
         self.__var.trace_add("write", self.__on_value_changed__)
-        super().__init__(parent, column, row, columnspan, rowspan, self.__var, *args)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, self.__var, *args)
     
     def get_value(self):
         return self.__var.get()
@@ -76,49 +68,53 @@ class VariableComponent(ChangeableComponent):
         pass
 
 class StringVariableComponent(VariableComponent):
-    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
-        super().__init__(parent, StringVar(value=value), column, row, columnspan, rowspan, *args)
+    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
+        super().__init__(parent, StringVar(value=value), column, row, columnspan, rowspan, sticky, *args)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, var, *args):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var, *args):
         pass
 
 class FloatVariableComponent(VariableComponent):
-    def __init__(self, parent, value=0.0, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+    def __init__(self, parent, value=0.0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
         super().__init__(parent, DoubleVar(value=value), column, row, columnspan, rowspan, *args)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, var, *args):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var, *args):
         pass
 
 class Frame(Component):
-    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, *args):
+    def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
         self.tkframe = None
-        super().__init__(parent, column, row, columnspan, rowspan, *args)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, *args)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, *args):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, *args):
         self.tkframe = self.__init_frame__(parent, *args)
-        self.tkframe.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        self.tkframe.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__add_enable_component__(self.tkframe)
     
     def __init_frame__(self, parent, *args):
         return ttk.Frame(parent)
     
     def configure(self, weight, columns = None, rows = None):
-        Component.configure(self.tkframe, weight, columns, rows)
+        if columns is not None:
+            self.tkframe.columnconfigure(columns, weight=weight)
+
+        if rows is not None:
+            self.tkframe.rowconfigure(rows, weight=weight)
 
 class LabelledFrame(Frame):
-    def __init__(self, parent, label_text="", column = 0, row = 0, columnspan = 1, rowspan = 1):
-        super().__init__(parent, column, row, columnspan, rowspan, label_text)
+    def __init__(self, parent, label_text="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, label_text)
     
     def __init_frame__(self, parent, label_text):
         return ttk.LabelFrame(parent, text=label_text)
 
 class Label(StringVariableComponent):
-    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1):
-        super().__init__(parent, value, column, row, columnspan, rowspan)
+    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+        super().__init__(parent, value, column, row, columnspan, rowspan, sticky)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, var):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var):
         label = ttk.Label(parent, textvariable=var)
-        label.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        label.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__add_enable_component__(label)
     
     def set_value(self, value, trigger_event = False):
@@ -126,22 +122,22 @@ class Label(StringVariableComponent):
 
 
 class Button(ClickableComponent):
-    def __init__(self, parent, text, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        super().__init__(parent, column, row, columnspan, rowspan, text)
+    def __init__(self, parent, text, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, text)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, text):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, text):
         button = ttk.Button(parent, text=text, command=self.on_click.invoke)
-        button.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        button.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__add_enable_component__(button)
 
 class Dropdown(StringVariableComponent):
-    def __init__(self, parent, values = [], default = "", column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, values = [], default = "", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__box = None
-        super().__init__(parent, default, column, row, columnspan, rowspan, values)
+        super().__init__(parent, default, column, row, columnspan, rowspan, sticky, values)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, var, values):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var, values):
         self.__box = ttk.Combobox(parent, textvariable=var, values=values)
-        self.__box.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        self.__box.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__box.state(["readonly"])
         self.__add_enable_component__(self.__box)
     
@@ -149,14 +145,14 @@ class Dropdown(StringVariableComponent):
         self.__box["values"] = values
 
 class TextEntry(StringVariableComponent):
-    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.on_enter = Event()
         self.on_focus_lost = Event()
-        super().__init__(parent, value, column, row, columnspan, rowspan)
+        super().__init__(parent, value, column, row, columnspan, rowspan, sticky)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, var):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var):
         entry = ttk.Entry(parent, textvariable=var)
-        entry.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        entry.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         entry.bind("<Return>", self.__on_enter__)
         entry.bind("<FocusOut>", self.__on_focus_lost__)
         self.__add_enable_component__(entry)
@@ -168,14 +164,14 @@ class TextEntry(StringVariableComponent):
         self.on_focus_lost.invoke(self.get_value())
 
 class FloatEntry(TextEntry):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         if minimum > maximum:
             raise Exception(f"Invalid minimum: {minimum} < {maximum}")
             
         if max_decimals is not None and max_decimals < 0:
             raise Exception(f"Invalid max decimals: {max_decimals}")
 
-        super().__init__(parent, column=column, row=row, columnspan=columnspan, rowspan=rowspan)
+        super().__init__(parent, column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__round = max_decimals
         self.minimum = None
         self.maximum = None
@@ -226,17 +222,17 @@ class FloatEntry(TextEntry):
         self.maximum = self.__round__(maximum)
 
 class Scale(FloatVariableComponent):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         if minimum > maximum:
             raise Exception(f"Invalid minimum: {minimum} < {maximum}")
 
         self.minimum = minimum
         self.maximum = maximum
-        super().__init__(parent, value, column, row, columnspan, rowspan)
+        super().__init__(parent, value, column, row, columnspan, rowspan, sticky)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, var):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var):
         scale = ttk.Scale(parent, orient=HORIZONTAL, from_=self.minimum, to=self.maximum, variable=var)
-        scale.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        scale.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__add_enable_component__(scale)
     
     def set_value(self, value, trigger_event = True):
@@ -244,15 +240,15 @@ class Scale(FloatVariableComponent):
         super().set_value(value, trigger_event)
 
 class ProgressBar(ClickableComponent):
-    def __init__(self, parent, clickable = False, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, clickable = False, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__progress_bar = None
         self.__progress = IntVar(value=0)
         self.__clickable = clickable
-        super().__init__(parent, column, row, columnspan, rowspan)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan):
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky):
         self.__progress_bar = ttk.Progressbar(parent, maximum=100, variable=self.__progress, mode='determinate')
-        self.__progress_bar.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=(N, W, E, S))
+        self.__progress_bar.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__progress_bar.bind("<Button 1>", self.__on_click__)
         self.__add_enable_component__(self.__progress_bar)
     
@@ -272,20 +268,20 @@ class ProgressBar(ClickableComponent):
         self.__progress.set(int(value * 100))
 
 class LabelledProgressBar(ClickableComponent):
-    def __init__(self, parent, clickable = False, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, clickable = False, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__progress_bar = None
         self.__label = None
-        super().__init__(parent, column, row, columnspan, rowspan, clickable)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, clickable)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, clickable):
-        frame = Frame(parent, column, row, columnspan, rowspan)
-        frame.configure(1, columns="all", rows="all")
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, clickable):
+        frame = Frame(parent, column, row, columnspan, rowspan, sticky)
+        frame.configure(1, columns=0, rows=[0, 1])
 
-        self.__progress_bar = ProgressBar(frame.tkframe, clickable, 0, 0, 4, 1)
+        self.__progress_bar = ProgressBar(frame.tkframe, clickable, 0, 0, 1, 1)
         self.__progress_bar.on_click.add_listener(self.on_click.invoke)
         self.__add_enable_component__(self.__progress_bar)
 
-        self.__label = Label(frame.tkframe, "", 0, 1, 4, 1)
+        self.__label = Label(frame.tkframe, "", 0, 1, 1, 1)
         self.__add_enable_component__(self.__label)
     
     def __on_click__(self, event):
@@ -305,24 +301,24 @@ class LabelledProgressBar(ClickableComponent):
         self.__label.set_value(label)
 
 class TextualProgressBar(ChangeableComponent):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         if maximum == 0.0:
             raise Exception(f"Invalid maximum: {maximum}")
 
         self.__progress_bar = None
         self.__entry = None
-        super().__init__(parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals):
-        frame = Frame(parent, column, row, columnspan, rowspan)
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals):
+        frame = Frame(parent, column, row, columnspan, rowspan, sticky)
+        frame.configure(1, columns=1, rows=0)
         frame.configure(4, columns=0)
-        frame.configure(1, columns=4, rows="all")
 
-        self.__progress_bar = ProgressBar(frame.tkframe, True, 0, 0, 4, 1)
+        self.__progress_bar = ProgressBar(frame.tkframe, True, 0, 0, 1, 1)
         self.__progress_bar.on_click.add_listener(self.__on_click_bar__)
         self.__add_enable_component__(self.__progress_bar)
 
-        self.__entry = FloatEntry(frame.tkframe, minimum, maximum, value, max_decimals, 4, 0, 1, 1)
+        self.__entry = FloatEntry(frame.tkframe, minimum, maximum, value, max_decimals, 1, 0, 1, 1)
         self.__entry.on_value_changed.add_listener(self.__on_entry_changed__)
         self.__entry.on_enter.add_listener(self.__on_entry_changed__)
         self.__entry.on_focus_lost.add_listener(self.__on_entry_changed__)
@@ -352,21 +348,21 @@ class TextualProgressBar(ChangeableComponent):
         self.__entry.set_maximum(maximum)
 
 class TextualScale(ChangeableComponent):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__scale = None
         self.__entry = None
-        super().__init__(parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals):
-        frame = Frame(parent, column, row, columnspan, rowspan)
-        frame.configure(1, columns="all", rows="all")
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals):
+        frame = Frame(parent, column, row, columnspan, rowspan, sticky)
+        frame.configure(1, columns=1, rows=0)
         frame.configure(4, columns=0)
         
-        self.__scale = Scale(frame.tkframe, minimum, maximum, value, 0, 0, 4, 1)
+        self.__scale = Scale(frame.tkframe, minimum, maximum, value, 0, 0, 1, 1)
         self.__scale.on_value_changed.add_listener(self.__on_scale_changed__)
         self.__add_enable_component__(self.__scale)
 
-        self.__entry = FloatEntry(frame.tkframe, minimum, maximum, value, max_decimals, 5, 0, 1, 1)
+        self.__entry = FloatEntry(frame.tkframe, minimum, maximum, value, max_decimals, 1, 0, 1, 1)
         self.__entry.on_value_changed.add_listener(self.__on_entry_changed__)
         self.__entry.on_enter.add_listener(self.__on_entry_changed__)
         self.__entry.on_focus_lost.add_listener(self.__on_entry_changed__)
@@ -390,16 +386,16 @@ class TextualScale(ChangeableComponent):
             self.on_value_changed.invoke(self.__entry.get_value())
 
 class LabelledTextualScale(ChangeableComponent):
-    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, label="", column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, minimum=0.0, maximum=1.0, value=0.0, max_decimals=None, label="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__scale = None
-        super().__init__(parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals, label)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, label)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, minimum, maximum, value, max_decimals, label_text):
-        frame = LabelledFrame(parent, label_text, column, row, columnspan, rowspan)
-        frame.configure(1, columns="all", rows="all")
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, minimum, maximum, value, max_decimals, label_text):
+        frame = LabelledFrame(parent, label_text, column, row, columnspan, rowspan, sticky)
+        frame.configure(1, columns=0, rows=0)
         self.__add_enable_component__(frame)
         
-        self.__scale = TextualScale(frame.tkframe, minimum, maximum, value, 0, 1, 1, 1)
+        self.__scale = TextualScale(frame.tkframe, minimum, maximum, value, max_decimals, 0, 0, 1, 1)
         self.__scale.on_value_changed.add_listener(self.on_value_changed.invoke)
         self.__add_enable_component__(self.__scale)
     
@@ -410,22 +406,22 @@ class LabelledTextualScale(ChangeableComponent):
         self.__scale.set_value(self.__entry.get_value(), trigger_event)
 
 class ExplorerEntry(ChangeableComponent):
-    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__entry = None
         self.__title = title
         self.__initial_dir = initial_dir
-        super().__init__(parent, column, row, columnspan, rowspan, value, button_text)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, value, button_text)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, value, button_text):
-        frame = Frame(parent, column, row, columnspan, rowspan)
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, value, button_text):
+        frame = Frame(parent, column, row, columnspan, rowspan, sticky)
+        frame.configure(1, columns=1, rows=0)
         frame.configure(4, columns=0)
-        frame.configure(1, columns=4, rows="all")
 
-        self.__entry = TextEntry(frame.tkframe, value, 0, 0, 4, 1)
+        self.__entry = TextEntry(frame.tkframe, value, 0, 0, 1, 1)
         self.__entry.on_value_changed.add_listener(self.on_value_changed.invoke)
         self.__add_enable_component__(self.__entry)
 
-        button = Button(frame.tkframe, button_text, 4, 0, 1, 1)
+        button = Button(frame.tkframe, button_text, 1, 0, 1, 1)
         button.on_click.add_listener(self.__on_browse__)
         self.__add_enable_component__(button)
     
@@ -459,9 +455,9 @@ class ExplorerEntry(ChangeableComponent):
         self.__initial_dir = initial_dir
 
 class FileExplorerEntry(ExplorerEntry):
-    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, file_types = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, file_types = None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__file_types = file_types
-        super().__init__(parent, value, button_text, title, initial_dir, column, row, columnspan, rowspan)
+        super().__init__(parent, value, button_text, title, initial_dir, column, row, columnspan, rowspan, sticky)
     
     def __build_kwargs__(self):
         kwargs = super().__build_kwargs__()
@@ -475,8 +471,8 @@ class FileExplorerEntry(ExplorerEntry):
         return Dialogs.choose_file(**kwargs)
 
 class DirExplorerEntry(ExplorerEntry):
-    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1):
-        super().__init__(parent, value, button_text, title, initial_dir, column, row, columnspan, rowspan)
+    def __init__(self, parent, value = "", button_text = "Browse", title = None, initial_dir = None, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+        super().__init__(parent, value, button_text, title, initial_dir, column, row, columnspan, rowspan, sticky)
 
     def __open_browser__(self, **kwargs):
         return Dialogs.choose_dir(**kwargs)
@@ -501,7 +497,7 @@ class Dialogs():
         return filedialog.asksaveasfilename(initialdir = initial_dir, title = title, filetypes=file_types, initialfile=initial_file, confirmoverwrite=confirm_overwrite)
 
 class AudioPlayer(Component):
-    def __init__(self, parent, inital_volume = 1.0, column = 0, row = 0, columnspan = 1, rowspan = 1):
+    def __init__(self, parent, inital_volume = 1.0, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__progress_bar = None
         self.__volume = None
         self.__audio = None
@@ -513,13 +509,12 @@ class AudioPlayer(Component):
         self.__MUSIC_END = MUSIC_END = pg.USEREVENT + 1
         mixer.music.set_endevent(self.__MUSIC_END)
 
-        super().__init__(parent, column, row, columnspan, rowspan, inital_volume)
+        super().__init__(parent, column, row, columnspan, rowspan, sticky, inital_volume)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, inital_volume):
-        frame = Frame(parent, column, row, columnspan, rowspan)
-        frame.configure(1, columns=[0, 1, 2], rows="all")
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, inital_volume):
+        frame = Frame(parent, column, row, columnspan, rowspan, sticky)
+        frame.configure(1, columns=[0, 1, 2], rows=[0, 1])
         frame.configure(3, columns=3)
-        frame.configure(6, rows=1)
 
         play = Button(frame.tkframe, "Play", 0, 0, 1, 1)
         play.on_click.add_listener(lambda *args: self.__play__())
@@ -537,7 +532,7 @@ class AudioPlayer(Component):
         self.__volume.on_value_changed.add_listener(self.__on_volume_changed__)
         self.__add_enable_component__(self.__volume)
 
-        self.__progress_bar = TextualProgressBar(frame.tkframe, max_decimals=3, column=0, row=1, columnspan=6, rowspan=1)
+        self.__progress_bar = TextualProgressBar(frame.tkframe, max_decimals=3, column=0, row=1, columnspan=4, rowspan=1)
         self.__progress_bar.on_value_changed.add_listener(lambda *args: self.__seek__(args[0][0]))
         self.__add_enable_component__(self.__progress_bar)
     

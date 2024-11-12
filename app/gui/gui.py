@@ -29,23 +29,28 @@ class GUI(Frame):
         self.__center_window__(self.__window)
         Couroutine.init(self.__window.after)
 
+        s = ttk.Style()
+        s.configure('mGreen.TFrame', background='green')
+        s.configure('mRed.TFrame', background='red')
+        s.configure('mBlue.TFrame', background='blue')
+
         self.tkframe = self.__window
-        self.configure(1, columns="all", rows="all")
-        self.configure(2, columns=0)
+        self.configure(10, columns=0, rows=0)
+        self.configure(1, columns=1)
 
-        lpart = Frame(self.__window, 0, 0, 1, 1)
-        lpart.configure(1, columns="all", rows="all")
+        lframe = Frame(self.__window, 0, 0, 1, 1)
+        lframe.configure(1, columns=0)
 
-        self.source_file_form = ChooseAudioFileForm(lpart.tkframe, "", 0, 0, 1, 1)
-        self.cover_form = CoverForm(lpart.tkframe, "", 0, 1, 1, 1)
-        self.save_as_form = SaveAsFileForm(lpart.tkframe, "", 0, 2, 1, 1)
+        self.source_file_form = ChooseAudioFileForm(lframe.tkframe, "", 0, 0, 1, 1)
+        self.cover_form = CoverForm(lframe.tkframe, "", 0, 1, 1, 1)
+        self.save_as_form = SaveAsFileForm(lframe.tkframe, "", 0, 2, 1, 1)
 
-        rpart = Frame(self.__window, 1, 0, 1, 1)
-        rpart.configure(1, columns="all", rows="all")
+        rframe = Frame(self.__window, 1, 0, 1, 1)
+        rframe.configure(1, columns=0)
 
-        self.progress_bar = ProgressBar(rpart.tkframe, False, 1, 0, 1, 1)
-        self.audio_player_dropdown = Dropdown(rpart.tkframe, ["Source audio", "Vocals cover", "Final output"], "Source audio", 1, 1, 1, 1)
-        self.audio_player = AudioPlayer(rpart.tkframe, 1.0, 1, 2, 1, 1)
+        self.progress_bar = ProgressBar(rframe.tkframe, False, 0, 0, 1, 1)
+        self.audio_player_dropdown = Dropdown(rframe.tkframe, [], "", 0, 1, 1, 1)
+        self.audio_player = AudioPlayer(rframe.tkframe, 1.0, 0, 2, 1, 1)
 
     def __center_window__(self, window):
         window.update_idletasks()
