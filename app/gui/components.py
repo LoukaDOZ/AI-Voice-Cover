@@ -5,6 +5,7 @@ from gui.coroutine import Couroutine
 import pygame as pg
 import pygame.mixer as mixer
 import os
+import math
 
 class Component():
     def __init__(self, parent, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), *args):
@@ -106,7 +107,7 @@ class LabelledFrame(Frame):
         super().__init__(parent, column, row, columnspan, rowspan, sticky, label_text)
     
     def __init_frame__(self, parent, label_text):
-        return ttk.LabelFrame(parent, text=label_text)
+        return ttk.LabelFrame(parent, text=" " + label_text + " ")
 
 class Label(StringVariableComponent):
     def __init__(self, parent, value="", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
@@ -181,7 +182,7 @@ class FloatEntry(TextEntry):
         self.set_value(value)
     
     def __round__(self, value):
-        return round(value, self.__round) if self.__round is not None else value
+        return math.floor(value * 10 ** self.__round) / 10 ** self.__round
     
     def __before_on_value_changed__(self):
         v = super().get_value()

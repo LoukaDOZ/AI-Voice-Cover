@@ -71,7 +71,7 @@ class CoverForm(Form):
         self.__explorer.on_value_changed.add_listener(self.__on_value_changed__)
         self.__add_enable_component__(self.__explorer)
 
-        self.__explorer_error = Label(frame.tkframe, "ae", column=0, row=1, columnspan=1, rowspan=1)
+        self.__explorer_error = Label(frame.tkframe, "", column=0, row=1, columnspan=1, rowspan=1)
         self.__add_enable_component__(self.__explorer_error)
 
         self.__db_scale = LabelledTextualScale(frame.tkframe, -20.0, 20.0, 0.0, 1, "Vocals bonus volume", 0, 2, 1, 1)
