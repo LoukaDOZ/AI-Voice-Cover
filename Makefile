@@ -1,19 +1,26 @@
 .PHONY: install
 
 install:
-	apt install python3-tk
-	python3 -m pip install -r requirement.txt
-	# python3 -m pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre TTS
-	# python3 -m pip install audiosegment audio-separator onnxruntime pygame
+	apt update -y
+	apt install python3-venv python3-tk -y
+	mkdir -p .venv/
+	python3 -m venv .venv/
+	.venv/bin/pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre TTS
+	.venv/bin/pip install audiosegment audio-separator onnxruntime pygame
 
 uninstall:
-	apt remove python3-tk
-	python3 -m pip uninstall -r requirement.txt
-	# python3 -m pip uninstall --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre TTS
-	# python3 -m pip uninstall audiosegment audio-separator onnxruntime pygame
+	rm -rf .venv/
+
+uninstall-venv:
+	apt remove python3-venv -y
+
+uninstall-tk:
+	apt remove python3-tk -y
+
+uninstall-all: uninstall-venv uninstall-tk uninstall
 
 run:
-	python app/main.py
+	.venv/bin/python3 app/main.py
 
 clean:
 	find .tmp/ ! -name '.gitkeep' -type f -exec rm -f {} +
