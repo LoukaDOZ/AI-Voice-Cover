@@ -11,6 +11,7 @@ AI models:
 ### Requirements
 
 - Python >= 3.11
+- libglib2.0-0
 - Make
 
 ### Installed packages
@@ -34,12 +35,6 @@ AI models:
 | `make clean`          | Clean project                              |
 
 ### Install
-
-If needed, install requirements using:
-```bash
-apt update -y
-apt install build-essential libssl-dev libffi-dev libglib2.0-0 python3.11 python-dev-is-python3 make -y
-```
 
 To install project libraries, use:
 ```bash
