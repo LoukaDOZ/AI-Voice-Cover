@@ -36,7 +36,7 @@ AI models:
 
 ### Install
 
-To install project libraries, use:
+After installing requirements, to install project libraries, use:
 ```bash
 make install
 ```
