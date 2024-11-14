@@ -80,7 +80,7 @@ class VoiceCoverApp():
     
     def __update_progress__(self, stop_func, callback):
         self.__gui.progress_bar.set_value(self.__vc.progress.get())
-        self.__gui.progress_bar.set_label(self.__vc.progress.get_label())
+        #self.__gui.progress_bar.set_label(self.__vc.progress.get_label())
 
         if stop_func():
             Couroutine.instance.stop("update progress")

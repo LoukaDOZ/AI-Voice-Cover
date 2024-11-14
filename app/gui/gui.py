@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import Tk, ttk
 from gui.event import Event
-from gui.components import Component, Frame, LabelledFrame, Button, LabelledProgressBar, AudioPlayer, Dialogs, Dropdown, TextEntry
+from gui.components import Component, Frame, LabelledFrame, MarginFrame, Button, ProgressBar, LabelledProgressBar, AudioPlayer, Dialogs, Dropdown, TextEntry
 from gui.forms import ChooseAudioFileForm, CoverForm, SaveAsFileForm
 from gui.coroutine import Couroutine
 import os
@@ -25,32 +25,53 @@ class GUI(Frame):
     def __init_gui__(self, *args):
         self.__window = Tk()
         self.__window.title("Voice Cover")
-        self.__window.geometry("700x500")
+        self.__window.geometry("550x325")
         self.__center_window__(self.__window)
         Couroutine.init(self.__window.after)
 
-        s = ttk.Style()
-        s.configure('mGreen.TFrame', background='green')
-        s.configure('mRed.TFrame', background='red')
-        s.configure('mBlue.TFrame', background='blue')
-
         self.tkframe = self.__window
-        self.configure(3, columns=0)
+        self.padding(5)
+        self.configure(1, columns=0, rows=[1,2])
+
+        pbmargin = MarginFrame(self.__window, marginy=(0,10), column=0, row=0, columnspan=2, rowspan=1, sticky=(N,E,W))
+        self.progress_bar = ProgressBar(pbmargin.tkframe, False, 0, 0, 1, 1)
+
+        lframe = Frame(self.__window, 0, 1, 1, 1, (N,S,W))
+        lframe.configure(1, columns=0, rows=[0,1])
+        smargin = MarginFrame(lframe.tkframe, marginy=(0,10))
+        self.source_file_form = ChooseAudioFileForm(smargin.tkframe, "Source audio", "", 0, 0, 1, 1)
+        self.save_as_form = SaveAsFileForm(lframe.tkframe, "Save output", "", 0, 1, 1, 1)
+
+        rframe = Frame(self.__window, 1, 1, 1, 1, (N,S,E))
+        rframe.configure(1, columns=0, rows=0)
+        self.cover_form = CoverForm(rframe.tkframe, "Voice cover", "", 0, 0, 1, 1)
+
+        pmargin = MarginFrame(self.__window, marginy=(5,0), column=0, row=2, columnspan=2, rowspan=1, sticky=(S,E,W))
+        pframe = LabelledFrame(pmargin.tkframe, "Audio player", 0, 0, 1, 1)
+        pframe.configure(1, columns=0)
+        pframe.padding(3)
+
+        self.audio_player_dropdown = Dropdown(pframe.tkframe, [], "", 0, 0, 1, 1, sticky=(N,W,E))
+        self.audio_player = AudioPlayer(pframe.tkframe, 1.0, column=0, row=1, columnspan=1, rowspan=1, sticky=(S,W,E))
+
+        """self.configure(5, columns=0)
         self.configure(1, columns=1, rows=0)
 
-        lframe = Frame(self.__window, 0, 0, 1, 1)
-        lframe.configure(1, columns=0)
+        lframe = Frame(self.__window, 0, 0, 1, 1, (N,S,W))
+        lframe.configure(1, columns=0, rows=2)
+        lframe.configure(2, rows=0)
+        lframe.configure(3, rows=1)
 
         self.source_file_form = ChooseAudioFileForm(lframe.tkframe, "", 0, 0, 1, 1)
         self.cover_form = CoverForm(lframe.tkframe, "", 0, 1, 1, 1)
         self.save_as_form = SaveAsFileForm(lframe.tkframe, "", 0, 2, 1, 1)
 
-        rframe = Frame(self.__window, 1, 0, 1, 1)
-        rframe.configure(1, columns=0)
+        rframe = Frame(self.__window, 1, 0, 1, 1, (N,S,E))
+        rframe.configure(1, columns=0, rows=[1,2])
 
         self.progress_bar = LabelledProgressBar(rframe.tkframe, False, 0, 0, 1, 1)
         self.audio_player_dropdown = Dropdown(rframe.tkframe, [], "", 0, 1, 1, 1)
-        self.audio_player = AudioPlayer(rframe.tkframe, 1.0, column=0, row=2, columnspan=1, rowspan=1)
+        self.audio_player = AudioPlayer(rframe.tkframe, 1.0, column=0, row=2, columnspan=1, rowspan=1, sticky=(S,W,E))"""
 
     def __center_window__(self, window):
         window.update_idletasks()
@@ -67,3 +88,8 @@ class GUI(Frame):
 
     def show(self):        
         self.__window.mainloop()
+    
+    def padding(self, padding = 0, padx = None, pady = None):
+        padx = padx if padx is not None else padding
+        pady = pady if pady is not None else padding
+        self.tkframe.config(padx=padx, pady=pady)
