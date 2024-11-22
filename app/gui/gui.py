@@ -6,6 +6,7 @@ from gui.forms import ChooseAudioFileForm, CoverForm, SaveAsFileForm
 from gui.audio_player import AudioPlayer
 from gui.coroutine import Couroutine
 from gui.dialogs import Dialogs
+from gui.styles import Styles
 import os
 
 class GUI(Frame):
@@ -31,6 +32,7 @@ class GUI(Frame):
         self.__center_window__(self.__window)
         Couroutine.init(self.__window.after)
         Dialogs.init(self.__window)
+        Styles.init()
 
         self.tkframe = self.__window
         self.padding(5)

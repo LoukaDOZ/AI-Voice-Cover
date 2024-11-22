@@ -5,6 +5,7 @@ from gui.coroutine import Couroutine
 from gui.components import ChangeableComponent, Frame, LabelledFrame, Label, Button, TextEntry, FloatEntry, ProgressBar, Dropdown
 from gui.audio_player import AudioPlayer
 from gui.thread import JoinNonBlockingThread
+from gui.styles import Styles
 from cover.result import Result
 from cover.recorder import Recorder
 from cover.audio import AudioPath
@@ -208,7 +209,7 @@ class RecordVoiceDialog(BaseDialog):
         topframe = Frame(tkframe, 0, 0, 1, 1, (N,E,W))
         topframe.configure(1, columns=0, rows=[0,1,2])
 
-        label = Label(topframe.tkframe, f"Record your voice for {self.__record_duration} seconds", "center", 0, 0, 2, 1, (E,W))
+        label = Label(topframe.tkframe, f"Record your voice for {self.__record_duration} seconds", "center", column=0, row=0, columnspan=2, rowspan=1, sticky=(E,W))
         self.__add_enable_component__(label)
 
         self.__progress_bar = ProgressBar(topframe.tkframe, False, 0, 1, 1, 1, (E,W))
@@ -227,7 +228,7 @@ class RecordVoiceDialog(BaseDialog):
         self.__record_btn.on_click.add_listener(self.__record__)
         self.__add_enable_component__(self.__record_btn)
 
-        self.__record_error = Label(recordframe.tkframe, column=0, row=1, columnspan=1, rowspan=2, sticky=(E,W))
+        self.__record_error = Label(recordframe.tkframe, column=0, row=1, columnspan=1, rowspan=2, sticky=(E,W), style=Styles.ERROR_LABEL)
         self.__add_enable_component__(self.__record_error)
 
         midframe = Frame(tkframe, 0, 1, 1, 1, (E,W))
@@ -248,7 +249,7 @@ class RecordVoiceDialog(BaseDialog):
         self.__explorer.enable(False)
         self.__add_enable_component__(self.__explorer)
 
-        self.__explorer_error = Label(botframe.tkframe, column=0, row=4, columnspan=1, rowspan=1, sticky=(E,W))
+        self.__explorer_error = Label(botframe.tkframe, column=0, row=4, columnspan=1, rowspan=1, sticky=(E,W), style=Styles.ERROR_LABEL)
         self.__explorer_error.enable(False)
         self.__add_enable_component__(self.__explorer_error)
 

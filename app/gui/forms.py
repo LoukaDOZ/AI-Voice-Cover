@@ -3,6 +3,7 @@ from tkinter import ttk
 from gui.event import Event
 from gui.components import Component, Frame, LabelledFrame, Button, Label, LabelledTextualScale
 from gui.dialogs import Dialogs, FileExplorerEntry
+from gui.styles import Styles
 import os
 
 class Form(LabelledFrame):
@@ -39,7 +40,7 @@ class ChooseAudioFileForm(Form):
         self.__explorer.on_value_changed.add_listener(self.__on_value_changed__)
         self.__add_enable_component__(self.__explorer)
 
-        self.__explorer_error = Label(self.tkframe, column=0, row=1, columnspan=1, rowspan=1, sticky=(E,W))
+        self.__explorer_error = Label(self.tkframe, column=0, row=1, columnspan=1, rowspan=1, sticky=(E,W), style=Styles.ERROR_LABEL)
         self.__add_enable_component__(self.__explorer_error)
 
         self.__submit_btn = Button(self.tkframe, "Submit", 0, 2, 1, 1, sticky=(S,E,W))
@@ -93,7 +94,7 @@ class CoverForm(Form):
         button.on_click.add_listener(self.__on_record__)
         self.__add_enable_component__(button)
 
-        self.__explorer_error = Label(self.tkframe, "", column=0, row=1, columnspan=2, rowspan=1, sticky=(E,W))
+        self.__explorer_error = Label(self.tkframe, "", column=0, row=1, columnspan=2, rowspan=1, sticky=(E,W), style=Styles.ERROR_LABEL)
         self.__add_enable_component__(self.__explorer_error)
 
         self.__db_scale = LabelledTextualScale(self.tkframe, -20.0, 20.0, 0.0, 1, "Vocals bonus volume", column=0, row=2, columnspan=2, rowspan=1, sticky=(E,W))

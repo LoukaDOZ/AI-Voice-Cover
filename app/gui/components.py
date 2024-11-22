@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import ttk
 from gui.event import Event
 from gui.coroutine import Couroutine
+from gui.styles import Styles
 import math
 import time
 
@@ -150,17 +151,16 @@ class MarginFrame(Frame):
         self.padding(margin, marginx, marginy)
 
 class Label(StringVariableComponent):
-    def __init__(self, parent, value="", anchor="w", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
-        super().__init__(parent, value, column, row, columnspan, rowspan, sticky, anchor)
+    def __init__(self, parent, value="", anchor="w", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W), style = None):
+        super().__init__(parent, value, column, row, columnspan, rowspan, sticky, anchor, style)
     
-    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var, anchor):
-        label = ttk.Label(parent, textvariable=var, anchor=anchor)
+    def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, var, anchor, style):
+        label = ttk.Label(parent, textvariable=var, anchor=anchor, style=style)
         label.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan, sticky=sticky)
         self.__add_enable_component__(label)
     
     def set_value(self, value, trigger_event = False):
         super().set_value(value, trigger_event)
-
 
 class Button(ClickableComponent):
     def __init__(self, parent, text, column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
