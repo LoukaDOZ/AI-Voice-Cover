@@ -286,6 +286,7 @@ class RecordVoiceDialog(BaseDialog):
     def __record__(self, *args):
         mic = self.__devices_dropdown.get_value()
         self.__record_btn.enable(False)
+        self.__devices_dropdown.enable(False)
         self.__audio_player.enable(False)
         self.__explorer.enable(False)
         self.__explorer_error.enable(False)
@@ -308,6 +309,7 @@ class RecordVoiceDialog(BaseDialog):
             Couroutine.instance.stop("record")
             self.__audio_player.set_audio(self.__record_file.fullpath)
             self.__record_btn.enable(True)
+            self.__devices_dropdown.enable(True)
             self.__audio_player.enable(True)
             self.__explorer.enable(True)
             self.__explorer_error.enable(True)

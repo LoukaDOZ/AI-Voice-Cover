@@ -28,6 +28,7 @@ class ChooseAudioFileForm(Form):
     def __init__(self, parent, label_text="", value = "", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__explorer = None
         self.__explorer_error = None
+        self.__submit_btn = None
         super().__init__(parent, label_text, column, row, columnspan, rowspan, sticky, value)
     
     def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, label_text, value):
@@ -41,9 +42,10 @@ class ChooseAudioFileForm(Form):
         self.__explorer_error = Label(self.tkframe, column=0, row=1, columnspan=1, rowspan=1, sticky=(E,W))
         self.__add_enable_component__(self.__explorer_error)
 
-        button = Button(self.tkframe, "Submit", 0, 2, 1, 1, sticky=(S,E,W))
-        button.on_click.add_listener(self.__on_submit__)
-        self.__add_enable_component__(button)
+        self.__submit_btn = Button(self.tkframe, "Submit", 0, 2, 1, 1, sticky=(S,E,W))
+        self.__submit_btn.on_click.add_listener(self.__on_submit__)
+        self.__add_enable_component__(self.__submit_btn)
+        self.__submit_btn.enable(False)
     
     def __validate__(self):
         return os.path.isfile(self.__explorer.get_value())
@@ -54,17 +56,29 @@ class ChooseAudioFileForm(Form):
     def __on_value_changed__(self, *args):
         value = self.__explorer.get_value()
 
-        if not os.path.isfile(value):
+        if not value:
+            self.__submit_btn.enable(False)
+            self.__explorer_error.set_value("")
+        elif not os.path.isfile(value):
             self.__explorer_error.set_value("Invalid path")
+            self.__submit_btn.enable(False)
         else:
             self.__explorer_error.set_value("")
             self.__explorer.set_initial_dir(os.path.dirname(value))
+            self.__submit_btn.enable(True)
+    
+    def enable(self, enable):
+        super().enable(enable)
+
+        if enable:
+            self.__on_value_changed__()
 
 class CoverForm(Form):
     def __init__(self, parent, label_text="", value = "", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
         self.__explorer = None
         self.__explorer_error = None
         self.__db_scale = None
+        self.__submit_btn = None
         super().__init__(parent, label_text, column, row, columnspan, rowspan, sticky, value)
     
     def __init_gui__(self, parent, column, row, columnspan, rowspan, sticky, label_text, value):
@@ -85,9 +99,10 @@ class CoverForm(Form):
         self.__db_scale = LabelledTextualScale(self.tkframe, -20.0, 20.0, 0.0, 1, "Vocals bonus volume", column=0, row=2, columnspan=2, rowspan=1, sticky=(E,W))
         self.__add_enable_component__(self.__db_scale)
 
-        button = Button(self.tkframe, "Submit", 0, 3, 2, 1, sticky=(S,E,W))
-        button.on_click.add_listener(self.__on_submit__)
-        self.__add_enable_component__(button)
+        self.__submit_btn = Button(self.tkframe, "Submit", 0, 3, 2, 1, sticky=(S,E,W))
+        self.__submit_btn.on_click.add_listener(self.__on_submit__)
+        self.__add_enable_component__(self.__submit_btn)
+        self.__submit_btn.enable(False)
     
     def __validate__(self):
         return os.path.isfile(self.__explorer.get_value())
@@ -98,17 +113,28 @@ class CoverForm(Form):
     def __on_value_changed__(self, *args):
         value = self.__explorer.get_value()
 
-        if not os.path.isfile(value):
+        if not value:
+            self.__submit_btn.enable(False)
+            self.__explorer_error.set_value("")
+        elif not os.path.isfile(value):
             self.__explorer_error.set_value("Invalid path")
+            self.__submit_btn.enable(False)
         else:
             self.__explorer_error.set_value("")
             self.__explorer.set_initial_dir(os.path.dirname(value))
+            self.__submit_btn.enable(True)
     
     def __on_record__(self, *args):
+        self.__submit_btn.enable(False)
         value = Dialogs.record_voice_sample()
+        value = value if value is not None else self.__explorer.get_value()
+        self.__explorer.set_value(value)
+    
+    def enable(self, enable):
+        super().enable(enable)
 
-        if value is not None:
-            self.__explorer.set_value(value)
+        if enable:
+            self.__on_value_changed__()
 
 class SaveAsFileForm(Form):
     def __init__(self, parent, label_text="", value = "", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
