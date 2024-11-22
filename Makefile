@@ -6,7 +6,7 @@ install:
 	mkdir -p .venv/
 	python3 -m venv .venv/
 	.venv/bin/pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre TTS
-	.venv/bin/pip install audiosegment audio-separator onnxruntime pygame pyaudio wave
+	.venv/bin/pip install audiosegment audio-separator onnxruntime pygame sounddevice soundfile
 
 uninstall:
 	rm -rf .venv/

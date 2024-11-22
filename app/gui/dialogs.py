@@ -5,6 +5,7 @@ from gui.coroutine import Couroutine
 from gui.components import ChangeableComponent, Frame, LabelledFrame, Label, Button, TextEntry, FloatEntry, ProgressBar, Dropdown
 from gui.audio_player import AudioPlayer
 from gui.thread import JoinNonBlockingThread
+from cover.result import Result
 from cover.recorder import Recorder
 from cover.audio import AudioPath
 import os
@@ -193,11 +194,11 @@ class RecordVoiceDialog(BaseDialog):
         self.__devices_dropdown = None
         self.__explorer = None
         self.__explorer_error = None
+        self.__record_error = None
         self.__record_duration = record_duration
         self.__initial_file = AudioPath("voice_samples/my_voice.wav")
         self.__record_file = AudioPath(".tmp/Record.wav")
         self.__devices = []
-        Recorder.init()
         super().__init__(parent, title)
     
     def body(self, master):
@@ -226,9 +227,12 @@ class RecordVoiceDialog(BaseDialog):
         self.__record_btn.on_click.add_listener(self.__record__)
         self.__add_enable_component__(self.__record_btn)
 
+        self.__record_error = Label(recordframe.tkframe, column=0, row=1, columnspan=1, rowspan=2, sticky=(E,W))
+        self.__add_enable_component__(self.__record_error)
+
         midframe = Frame(tkframe, 0, 1, 1, 1, (E,W))
         midframe.configure(1, columns=0)
-        midframe.padding(pady=(20,0))
+        midframe.padding(pady=(10,0))
 
         self.__audio_player = AudioPlayer(midframe.tkframe, 1.0, column=0, row=2, columnspan=1, rowspan=1)
         self.__audio_player.enable(False)
@@ -236,7 +240,7 @@ class RecordVoiceDialog(BaseDialog):
 
         botframe = Frame(tkframe, 0, 2, 1, 1, (E,W))
         botframe.configure(1, columns=0, rows=[0,1])
-        botframe.padding(pady=(20,0))
+        botframe.padding(pady=(15,0))
 
         self.__explorer = SaveFileExplorerEntry(botframe.tkframe, self.__initial_file.fullpath, button_text="Save as", initial_dir=self.__initial_file.dirname,
             initial_file=self.__initial_file.basename, file_types=[("WAV", ".wav")], column=0, row=3, columnspan=1, rowspan=1, sticky=(E,W))
@@ -258,15 +262,12 @@ class RecordVoiceDialog(BaseDialog):
     def apply(self):
         shutil.copy(self.__record_file.fullpath, self.__explorer.get_value())
         self.result = self.__explorer.get_value()
-        Recorder.close()
     
     def __ok__(self, *args):
-        Recorder.close()
         self.ok()
     
     def __cancel__(self, *args):
         Couroutine.instance.stop("record")
-        Recorder.close()
         self.cancel()
     
     def __get_working_devices__(self):
@@ -285,22 +286,25 @@ class RecordVoiceDialog(BaseDialog):
     
     def __record__(self, *args):
         mic = self.__devices_dropdown.get_value()
+        res = Result()
         self.__record_btn.enable(False)
         self.__devices_dropdown.enable(False)
+        self.__record_error.enable(False)
         self.__audio_player.enable(False)
         self.__explorer.enable(False)
         self.__explorer_error.enable(False)
+        self.enable_ok(False)
+        self.enable_cancel(False)
 
         for index, name in self.__devices:
             if name == mic:
-
-                thread = JoinNonBlockingThread(target=Recorder.record, args=(self.__record_duration, self.__record_file.fullpath, index))
+                thread = JoinNonBlockingThread(target=Recorder.record, args=(self.__record_duration, self.__record_file.fullpath, index, res))
                 thread.start()
 
-                Couroutine.instance.start(self.__update_progress__, name="record", args=(thread,))
+                Couroutine.instance.start(self.__update_progress__, name="record", args=(thread, res))
                 break
     
-    def __update_progress__(self, thread):
+    def __update_progress__(self, thread, res):
         progress = Recorder.PROGRESS.get()
         self.__progress_bar.set_value(progress)
         self.__progress_entry.set_value(progress * self.__record_duration)
@@ -310,10 +314,13 @@ class RecordVoiceDialog(BaseDialog):
             self.__audio_player.set_audio(self.__record_file.fullpath)
             self.__record_btn.enable(True)
             self.__devices_dropdown.enable(True)
+            self.__record_error.enable(True)
             self.__audio_player.enable(True)
             self.__explorer.enable(True)
             self.__explorer_error.enable(True)
             self.enable_ok(True)
+            self.enable_cancel(True)
+            self.__record_error.set_value("" if res.result else "Unable to record with this microphone")
     
     def __on_save__(self, *args):
         path = args[0][0][0]

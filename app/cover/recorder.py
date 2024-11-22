@@ -1,92 +1,58 @@
 from cover.progress import ProgressManager
-import pyaudio
-import wave
+import sounddevice as sd
+import soundfile as sf
+import queue
 import math
+import time
 
 class Recorder():
-    FORMAT = pyaudio.paInt16
-    CHANNELS = 1
-    RATE = 44100
-    CHUNK = 512
-    PYAUDIO = None
     PROGRESS = ProgressManager()
-    
-    @staticmethod
-    def init():
-        if Recorder.PYAUDIO is not None:
-            raise Exception("Already initiated")
-
-        Recorder.PYAUDIO = pyaudio.PyAudio()
-    
-    @staticmethod
-    def close():
-        if Recorder.PYAUDIO is not None:
-            Recorder.PYAUDIO.terminate()
-            Recorder.PYAUDIO = None
+    __OPEN_STREAM_MAX_TRIES = 4
+    __CHANNELS = 1
+    ___RATE = 44100
+    __CHUNK = 512
     
     @staticmethod
     def get_available_devices():
-        info = Recorder.PYAUDIO.get_host_api_info_by_index(0)
-        count = Recorder.PYAUDIO.get_device_count()
         res = []
 
-        for i in range(count):
-            info = Recorder.PYAUDIO.get_device_info_by_host_api_device_index(0, i)
-
-            if (info.get('maxInputChannels')) > 0:
-                """try :
-                    if(Recorder.PYAUDIO.is_format_supported(Recorder.RATE, input_device=i, input_channels=Recorder.CHANNELS, input_format=Recorder.FORMAT)):
-                        print(i, info.get('name'), "VALID")
-                        res.append((i, info.get('name')))
-                    else:
-                        print(i, info.get('name'), "INVALID")
-                except:
-                    print(i, info.get('name'), "INVALID")"""
-
-                try:
-                    stream = Recorder.PYAUDIO.open(format=Recorder.FORMAT, channels=Recorder.CHANNELS, rate=Recorder.RATE, input=True,
-                        input_device_index=i, frames_per_buffer=Recorder.CHUNK)
-
-                    try:
-                        buffer = stream.read(Recorder.CHUNK)
-                        if not stream.is_stopped():
-                            stream.stop_stream()
-                        
-                        res.append((i, info.get('name')))
-                    except:
-                        pass
-                    finally:
-                        if steam.is_active():
-                            stream.close()
-                except:
-                    continue
+        for device in sd.query_devices():
+            try:
+                sd.check_input_settings(device['index'], Recorder.__CHANNELS, samplerate=Recorder.___RATE)
+                #sd.check_output_settings(device['index'], Recorder.__CHANNELS, samplerate=Recorder.___RATE)
+                res.append((device['index'], device['name']))
+            except:
+                pass
         
         return res
 
     @staticmethod
-    def record(duration_sec, output_file, device_index = 0):
-        steps_count = math.ceil(Recorder.RATE / Recorder.CHUNK * duration_sec)
-        Recorder.PROGRESS.reset(limit=steps_count + 2)
+    def record(duration_sec, output_file, device_index = 0, result_obj = None):
+        data_queue = queue.Queue()
+        success = False
+        Recorder.PROGRESS.reset(limit=100)
 
-        stream = Recorder.PYAUDIO.open(format=Recorder.FORMAT, channels=Recorder.CHANNELS, rate=Recorder.RATE, input=True,
-            input_device_index=device_index, frames_per_buffer=Recorder.CHUNK)
-        
-        Recorder.PROGRESS.step()
-        frames = []
-        
-        for i in range(steps_count):
-            data = stream.read(Recorder.CHUNK)
-            frames.append(data)
-            Recorder.PROGRESS.step()
-        
-        stream.stop_stream()
-        stream.close()
-        
-        waveFile = wave.open(output_file, 'wb')
-        waveFile.setnchannels(Recorder.CHANNELS)
-        waveFile.setsampwidth(Recorder.PYAUDIO.get_sample_size(Recorder.FORMAT))
-        waveFile.setframerate(Recorder.RATE)
-        waveFile.writeframes(b''.join(frames))
-        waveFile.close()
+        def callback(indata, frames, time, status):
+            data_queue.put(indata.copy())
 
-        Recorder.PROGRESS.step()
+        try:
+            with sf.SoundFile(output_file, mode='w', samplerate=Recorder.___RATE, channels=Recorder.__CHANNELS) as file:
+                for _try in range(Recorder.__OPEN_STREAM_MAX_TRIES):
+                    try:
+                        with sd.InputStream(samplerate=Recorder.___RATE, device=device_index, channels=Recorder.__CHANNELS, callback=callback):
+                            start_time = time.time()
+
+                            while time.time() - start_time < duration_sec:
+                                Recorder.PROGRESS.set_steps(min((time.time() - start_time) / duration_sec * 100, 100))
+                                file.write(data_queue.get())
+                        
+                        Recorder.PROGRESS.set_steps(100)
+                        success = True
+                        break
+                    except Exception as e:
+                        print('Try ' + str(_try) + ': ' + type(e).__name__ + ': ' + str(e))
+        except Exception as e:
+            print(type(e).__name__ + ': ' + str(e))
+        
+        result_obj.set(success)
+        return success

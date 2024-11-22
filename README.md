@@ -24,6 +24,7 @@ Supported audio formats:
 - AudioSegment
 - Tkinter
 - Venv
+- sounddevice
 
 ### Makefile
 

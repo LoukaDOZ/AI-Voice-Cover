@@ -19,5 +19,8 @@ class ProgressManager():
         self.__current += step
         self.__label = label if label is not None else self.__label
     
+    def set_steps(self, total = 0):
+        self.__current = total
+    
     def get(self):
         return float(self.__current / self.__limit)
