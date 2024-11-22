@@ -6,7 +6,7 @@ install:
 	mkdir -p .venv/
 	python3 -m venv .venv/
 	.venv/bin/pip install --extra-index-url https://pypi-nightly.tensorflow.org/simple --pre TTS
-	.venv/bin/pip install audiosegment audio-separator onnxruntime pygame
+	.venv/bin/pip install audiosegment audio-separator onnxruntime pygame pyaudio wave
 
 uninstall:
 	rm -rf .venv/
@@ -25,4 +25,5 @@ run:
 clean:
 	find .tmp/ ! -name '.gitkeep' -type f -exec rm -f {} +
 	find outputs/ ! -name '.gitkeep' -type f -exec rm -f {} +
+	find voice_samples/ ! -name '.gitkeep' -type f -exec rm -f {} +
 	find app/ -name '__pycache__' -type d -exec rm -rf {} +

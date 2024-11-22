@@ -7,6 +7,9 @@ AI models:
 - [Audio Separator](https://github.com/nomadkaraoke/python-audio-separator) (default model)
 - [Coqui.ai TTS](https://github.com/coqui-ai/TTS) (freevc24)
 
+Supported audio formats:
+- WAV
+
 ## Usage
 ### Requirements
 

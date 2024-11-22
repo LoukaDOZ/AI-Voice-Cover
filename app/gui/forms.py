@@ -1,7 +1,8 @@
 from tkinter import *
 from tkinter import ttk
 from gui.event import Event
-from gui.components import Component, Frame, LabelledFrame, Button, Label, FileExplorerEntry, Dialogs, LabelledTextualScale
+from gui.components import Component, Frame, LabelledFrame, Button, Label, LabelledTextualScale
+from gui.dialogs import Dialogs, FileExplorerEntry
 import os
 
 class Form(LabelledFrame):
@@ -74,13 +75,17 @@ class CoverForm(Form):
         self.__explorer.on_value_changed.add_listener(self.__on_value_changed__)
         self.__add_enable_component__(self.__explorer)
 
-        self.__explorer_error = Label(self.tkframe, "", column=0, row=1, columnspan=1, rowspan=1, sticky=(E,W))
+        button = Button(self.tkframe, "Record", 1, 0, 1, 1, sticky=(E,W))
+        button.on_click.add_listener(self.__on_record__)
+        self.__add_enable_component__(button)
+
+        self.__explorer_error = Label(self.tkframe, "", column=0, row=1, columnspan=2, rowspan=1, sticky=(E,W))
         self.__add_enable_component__(self.__explorer_error)
 
-        self.__db_scale = LabelledTextualScale(self.tkframe, -20.0, 20.0, 0.0, 1, "Vocals bonus volume", column=0, row=2, columnspan=1, rowspan=1, sticky=(E,W))
+        self.__db_scale = LabelledTextualScale(self.tkframe, -20.0, 20.0, 0.0, 1, "Vocals bonus volume", column=0, row=2, columnspan=2, rowspan=1, sticky=(E,W))
         self.__add_enable_component__(self.__db_scale)
 
-        button = Button(self.tkframe, "Submit", 0, 3, 1, 1, sticky=(S,E,W))
+        button = Button(self.tkframe, "Submit", 0, 3, 2, 1, sticky=(S,E,W))
         button.on_click.add_listener(self.__on_submit__)
         self.__add_enable_component__(button)
     
@@ -98,6 +103,12 @@ class CoverForm(Form):
         else:
             self.__explorer_error.set_value("")
             self.__explorer.set_initial_dir(os.path.dirname(value))
+    
+    def __on_record__(self, *args):
+        value = Dialogs.record_voice_sample()
+
+        if value is not None:
+            self.__explorer.set_value(value)
 
 class SaveAsFileForm(Form):
     def __init__(self, parent, label_text="", value = "", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
