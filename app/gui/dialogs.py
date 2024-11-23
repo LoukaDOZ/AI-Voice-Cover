@@ -193,18 +193,17 @@ class RecordVoiceDialog(BaseDialog):
         self.__record_btn = None
         self.__audio_player = None
         self.__devices_dropdown = None
-        self.__explorer = None
-        self.__explorer_error = None
         self.__record_error = None
         self.__record_duration = record_duration
         self.__initial_file = AudioPath("voice_samples/my_voice.wav")
         self.__record_file = AudioPath(".tmp/Record.wav")
         self.__devices = []
+        self.__save_file = None
         super().__init__(parent, title)
     
     def body(self, master):
         tkframe = super().body(master)
-        self.root.configure(1, columns=0, rows=[0,1,2])
+        self.root.configure(1, columns=0, rows=[0,1])
 
         topframe = Frame(tkframe, 0, 0, 1, 1, (N,E,W))
         topframe.configure(1, columns=0, rows=[0,1,2])
@@ -239,20 +238,6 @@ class RecordVoiceDialog(BaseDialog):
         self.__audio_player.enable(False)
         self.__add_enable_component__(self.__audio_player)
 
-        botframe = Frame(tkframe, 0, 2, 1, 1, (E,W))
-        botframe.configure(1, columns=0, rows=[0,1])
-        botframe.padding(pady=(15,0))
-
-        self.__explorer = SaveFileExplorerEntry(botframe.tkframe, self.__initial_file.fullpath, button_text="Save as", initial_dir=self.__initial_file.dirname,
-            initial_file=self.__initial_file.basename, file_types=[("WAV", ".wav")], column=0, row=3, columnspan=1, rowspan=1, sticky=(E,W))
-        self.__explorer.on_value_changed.add_listener(self.__on_save__)
-        self.__explorer.enable(False)
-        self.__add_enable_component__(self.__explorer)
-
-        self.__explorer_error = Label(botframe.tkframe, column=0, row=4, columnspan=1, rowspan=1, sticky=(E,W), style=Styles.ERROR_LABEL)
-        self.__explorer_error.enable(False)
-        self.__add_enable_component__(self.__explorer_error)
-
         self.__update_devices__()
         return tkframe
     
@@ -261,14 +246,21 @@ class RecordVoiceDialog(BaseDialog):
         self.enable_ok(False)
 
     def apply(self):
-        shutil.copy(self.__record_file.fullpath, self.__explorer.get_value())
-        self.result = self.__explorer.get_value()
+        shutil.copy(self.__record_file.fullpath, self.__save_file)
+        self.result = self.__save_file
     
     def __ok__(self, *args):
-        self.ok()
+        save_file = Dialogs.save_as_file(initial_dir=self.__initial_file.dirname, initial_file=self.__initial_file.basename, file_types=[("WAV", ".wav")])
+
+        if save_file and os.path.isdir(os.path.dirname(save_file)):
+            self.__save_file = save_file
+            self.ok()
+        else:
+            self.__save_file = None
     
     def __cancel__(self, *args):
         Couroutine.instance.stop("record")
+        self.__save_file = None
         self.cancel()
     
     def __get_working_devices__(self):
@@ -292,8 +284,6 @@ class RecordVoiceDialog(BaseDialog):
         self.__devices_dropdown.enable(False)
         self.__record_error.enable(False)
         self.__audio_player.enable(False)
-        self.__explorer.enable(False)
-        self.__explorer_error.enable(False)
         self.enable_ok(False)
         self.enable_cancel(False)
 
@@ -317,18 +307,6 @@ class RecordVoiceDialog(BaseDialog):
             self.__devices_dropdown.enable(True)
             self.__record_error.enable(True)
             self.__audio_player.enable(True)
-            self.__explorer.enable(True)
-            self.__explorer_error.enable(True)
             self.enable_ok(True)
             self.enable_cancel(True)
             self.__record_error.set_value("" if res.result else "Unable to record with this microphone")
-    
-    def __on_save__(self, *args):
-        path = args[0][0][0]
-
-        if not os.path.isdir(os.path.dirname(path)):
-            self.__explorer_error.set_value("Invalid path")
-            self.enable_ok(False)
-        else:
-            self.__explorer_error.set_value("")
-            self.enable_ok(True)
