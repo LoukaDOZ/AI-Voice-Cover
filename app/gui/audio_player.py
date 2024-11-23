@@ -22,6 +22,7 @@ class Mixer():
     __POS_0 = 0.0
     __END_EVENT = None
     __CO_ID = None
+    __IGNORE_STOP = 0
 
     @staticmethod
     def register(update_listener = None):
@@ -79,10 +80,16 @@ class Mixer():
         Mixer.__PLAYERS[pid].audio_file = audio_file
         Mixer.__PLAYERS[pid].audio = mixer.Sound(audio_file)
         Mixer.__PLAYERS[pid].audio_len = Mixer.__PLAYERS[pid].audio.get_length()
+        Mixer.__PLAYERS[pid].start_pos = 0.0
 
         if Mixer.__CURRENT == pid:
+            Couroutine.instance.stop(Mixer.__CO_ID)
+            mixer.music.unpause()
             mixer.music.stop()
-            mixer.music.load(audio_file)
+            Mixer.__CURRENT = None
+            Mixer.__IGNORE_STOP += 1
+        
+        Mixer.__PLAYERS[pid].on_update.invoke()
     
     @staticmethod
     def play(pid):
@@ -153,14 +160,18 @@ class Mixer():
     
     @staticmethod
     def __update__(*args):
-        Mixer.__PLAYERS[Mixer.__CURRENT].on_update.invoke()
+        if Mixer.__CURRENT:
+            Mixer.__PLAYERS[Mixer.__CURRENT].on_update.invoke()
 
         for e in pg.event.get():
             if e.type == Mixer.__END_EVENT:
-                Couroutine.instance.stop(Mixer.__CO_ID)
-                Mixer.__PLAYERS[Mixer.__CURRENT].start_pos = 0.0
-                Mixer.__PLAYERS[Mixer.__CURRENT].on_update.invoke()
-                Mixer.__CURRENT = None
+                if Mixer.__IGNORE_STOP > 0:
+                    Mixer.__IGNORE_STOP -= 1
+                elif Mixer.__CURRENT is not None:
+                    Couroutine.instance.stop(Mixer.__CO_ID)
+                    Mixer.__PLAYERS[Mixer.__CURRENT].start_pos = 0.0
+                    Mixer.__PLAYERS[Mixer.__CURRENT].on_update.invoke()
+                    Mixer.__CURRENT = None
     
     @staticmethod
     def __update_pos_0__():
@@ -206,6 +217,9 @@ class AudioPlayer(Component):
     
     def set_volume(self, volume):
         self.__volume.set_value(volume)
+    
+    def pause(self):
+        self.__pause__()
     
     def __play__(self, *args):
         Mixer.play(self.__pid)

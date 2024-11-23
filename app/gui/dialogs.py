@@ -250,6 +250,7 @@ class RecordVoiceDialog(BaseDialog):
         self.result = self.__save_file
     
     def __ok__(self, *args):
+        self.__audio_player.pause()
         save_file = Dialogs.save_as_file(initial_dir=self.__initial_file.dirname, initial_file=self.__initial_file.basename, file_types=[("WAV", ".wav")])
 
         if save_file and os.path.isdir(os.path.dirname(save_file)):
@@ -260,6 +261,7 @@ class RecordVoiceDialog(BaseDialog):
     
     def __cancel__(self, *args):
         Couroutine.instance.stop("record")
+        self.__audio_player.pause()
         self.__save_file = None
         self.cancel()
     
@@ -284,6 +286,7 @@ class RecordVoiceDialog(BaseDialog):
         self.__devices_dropdown.enable(False)
         self.__record_error.enable(False)
         self.__audio_player.enable(False)
+        self.__audio_player.pause()
         self.enable_ok(False)
         self.enable_cancel(False)
 
