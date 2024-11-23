@@ -58,7 +58,6 @@ class GUI(Frame):
 
         self.audio_player_dropdown = Dropdown(pframe.tkframe, [], "", 0, 0, 1, 1, sticky=(N,W,E))
         self.audio_player = AudioPlayer(pframe.tkframe, 1.0, column=0, row=1, columnspan=1, rowspan=1, sticky=(S,W,E))
-        #self.audio_player2 = AudioPlayer(pframe.tkframe, 1.0, column=0, row=2, columnspan=1, rowspan=1, sticky=(S,W,E))
 
     def __center_window__(self, window):
         window.update_idletasks()

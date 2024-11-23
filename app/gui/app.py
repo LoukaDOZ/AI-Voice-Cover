@@ -23,9 +23,6 @@ class VoiceCoverApp():
         self.__gui.audio_player_dropdown.enable(False)
         self.__gui.audio_player_dropdown.set_values(self.__dropdown_values_source_only)
 
-        #self.__gui.audio_player.set_audio("/home/doz/Bureau/python/AI-Voice-Cover/.tmp/Instrumentals.wav")
-        #self.__gui.audio_player2.set_audio("/home/doz/Bureau/python/AI-Voice-Cover/.tmp/Vocals.wav")
-
         self.__vc_data = None
     
     def run(self):

@@ -79,6 +79,10 @@ class Mixer():
         Mixer.__PLAYERS[pid].audio_file = audio_file
         Mixer.__PLAYERS[pid].audio = mixer.Sound(audio_file)
         Mixer.__PLAYERS[pid].audio_len = Mixer.__PLAYERS[pid].audio.get_length()
+
+        if Mixer.__CURRENT == pid:
+            mixer.music.stop()
+            mixer.music.load(audio_file)
     
     @staticmethod
     def play(pid):
@@ -96,7 +100,6 @@ class Mixer():
             mixer.music.load(Mixer.__PLAYERS[pid].audio_file)
             mixer.music.play()
 
-            #print(f"PLAY FOR {pid}|{Mixer.__CURRENT} ({Mixer.__PLAYERS[pid].start_pos}|{Mixer.get_pos(pid)}|{mixer.music.get_pos()/1000.0}|{Mixer.__POS_0})")
             mixer.music.set_pos(Mixer.get_pos(pid))
             mixer.music.set_volume(Mixer.__PLAYERS[pid].volume)
             Mixer.__update_pos_0__()
@@ -134,7 +137,6 @@ class Mixer():
 
         Mixer.__PLAYERS[pid].start_pos = pos
         Mixer.__PLAYERS[pid].on_update.invoke()
-        #print(f"SET POS {pos} FOR {pid}|{Mixer.__CURRENT} ({Mixer.__PLAYERS[pid].start_pos}|{Mixer.get_pos(pid)}|{mixer.music.get_pos()/1000.0}|{Mixer.__POS_0})")
     
     @staticmethod
     def set_volume(pid, volume):
@@ -152,7 +154,6 @@ class Mixer():
     @staticmethod
     def __update__(*args):
         Mixer.__PLAYERS[Mixer.__CURRENT].on_update.invoke()
-        #print(Mixer.get_pos(Mixer.__CURRENT),",",Mixer.__PLAYERS[Mixer.__CURRENT].start_pos,",", mixer.music.get_pos()/1000.0, ",",Mixer.__POS_0,"/",Mixer.__PLAYERS[Mixer.__CURRENT].audio_len)
 
         for e in pg.event.get():
             if e.type == Mixer.__END_EVENT:
