@@ -14,6 +14,7 @@ class VoiceCoverApp():
         self.__gui = GUI()
         self.__gui.source_file_form.on_submit.add_listener(self.__preprocess__)
         self.__gui.cover_form.on_submit.add_listener(self.__cover__)
+        self.__gui.cover_form.on_record_btn_clicked.add_listener(lambda *args: self.__gui.audio_player.pause())
         self.__gui.save_as_form.on_submit.add_listener(self.__save_as__)
         self.__gui.audio_player_dropdown.on_value_changed.add_listener(self.__on_audio_dropdown_changed__)
 
@@ -34,6 +35,7 @@ class VoiceCoverApp():
         self.__gui.cover_form.enable(False)
         self.__gui.save_as_form.enable(False)
         self.__gui.audio_player.enable(False)
+        self.__gui.audio_player.pause()
         self.__gui.audio_player_dropdown.enable(False)
         self.__gui.audio_player_dropdown.set_values(self.__dropdown_values_source_only)
         self.__gui.audio_player_dropdown.set_value(self.__dropdown_values_source_only[0])
@@ -53,6 +55,9 @@ class VoiceCoverApp():
         voice_sample, vocals_bonus_db = args[0]
 
         self.__gui.save_as_form.enable(False)
+        self.__gui.audio_player_dropdown.enable(False)
+        self.__gui.audio_player.enable(False)
+        self.__gui.audio_player.pause()
 
         self.__vc.reset_progress(self.__vc_data, cover=True, merge=True)
         self.__run_long_process__(lambda: self.__vc.cover(voice_sample, self.__vc_data), lambda *args: self.__merge__(vocals_bonus_db))
@@ -65,6 +70,7 @@ class VoiceCoverApp():
         self.__gui.audio_player_dropdown.enable(True)
         self.__gui.audio_player_dropdown.set_values(self.__dropdown_values_all)
         self.__on_audio_dropdown_changed__(self.__gui.audio_player_dropdown.get_value())
+        self.__gui.audio_player.enable(True)
     
     def __save_as__(self, *args):
         if self.__vc_data.is_merged:

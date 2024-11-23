@@ -76,6 +76,7 @@ class ChooseAudioFileForm(Form):
 
 class CoverForm(Form):
     def __init__(self, parent, label_text="", value = "", column = 0, row = 0, columnspan = 1, rowspan = 1, sticky = (N,S,E,W)):
+        self.on_record_btn_clicked = Event()
         self.__explorer = None
         self.__explorer_error = None
         self.__db_scale = None
@@ -126,6 +127,7 @@ class CoverForm(Form):
             self.__submit_btn.enable(True)
     
     def __on_record__(self, *args):
+        self.on_record_btn_clicked.invoke()
         self.__submit_btn.enable(False)
         value = Dialogs.record_voice_sample()
         value = value if value is not None else self.__explorer.get_value()

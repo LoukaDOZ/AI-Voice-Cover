@@ -160,7 +160,7 @@ class Mixer():
     
     @staticmethod
     def __update__(*args):
-        if Mixer.__CURRENT:
+        if Mixer.__CURRENT is not None:
             Mixer.__PLAYERS[Mixer.__CURRENT].on_update.invoke()
 
         for e in pg.event.get():
