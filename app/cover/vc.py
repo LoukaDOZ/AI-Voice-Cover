@@ -135,7 +135,7 @@ class VoiceCover():
             file, start_sec = data.cover_parts[i]
             self.progress.set_label(f"Merging {int(float((i + 1) / count) * 100.0)}% ({i + 1}/{count})")
 
-            cover = cover.overlay(AudioFile.get_audio(file, self.__cover_path.type), position=start_sec * 1000)
+            cover = cover.append(AudioFile.get_audio(file, self.__cover_path.type))
             self.progress.step()
         
         self.progress.set_label(f"Exporting covered vocals")
