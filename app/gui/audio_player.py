@@ -17,7 +17,7 @@ class Player():
         self.on_update = Event()
 
 class Mixer():
-    __PLAYERS = []
+    __PLAYERS = {}
     __CURRENT = None
     __POS_0 = 0.0
     __END_EVENT = None
@@ -35,8 +35,21 @@ class Mixer():
             Mixer.__END_EVENT = pg.USEREVENT + 1
             mixer.music.set_endevent(Mixer.__END_EVENT)
 
-        Mixer.__PLAYERS.append(player)
-        return len(Mixer.__PLAYERS) - 1
+        pid = len(Mixer.__PLAYERS)
+        Mixer.__PLAYERS[pid] = player
+        return pid
+
+    @staticmethod
+    def free(pid):
+        if pid < 0 or pid >= len(Mixer.__PLAYERS):
+            raise Exception(f"Invalid player id: {pid}")
+
+        if pid == Mixer.__CURRENT:
+            Couroutine.instance.stop(Mixer.__CO_ID)
+            Mixer.__CURRENT = None
+        
+        mixer.music.stop()
+        del Mixer.__PLAYERS[pid]
     
     @staticmethod
     def is_playing(pid):
@@ -240,3 +253,6 @@ class AudioPlayer(Component):
         audio_len = Mixer.get_audio_len(self.__pid)
         pos = max(min(Mixer.get_pos(self.__pid), audio_len), 0.0)
         self.__progress_bar.set_value(pos, trigger_event=False)
+    
+    def free(self):
+        Mixer.free(self.__pid)

@@ -135,7 +135,7 @@ class Dialogs():
     
     @staticmethod
     def record_voice_sample():
-        return RecordVoiceDialog(Dialogs.WINDOW, "test", 6).result
+        return RecordVoiceDialog(Dialogs.WINDOW, "Record you vocie", 6).result
 
 class BaseDialog(simpledialog.Dialog):
     def __init__(self, parent, title, cancel_text = "Cancel", ok_text = "OK"):
@@ -246,6 +246,7 @@ class RecordVoiceDialog(BaseDialog):
         self.enable_ok(False)
 
     def apply(self):
+        self.__audio_player.free()
         shutil.copy(self.__record_file.fullpath, self.__save_file)
         self.result = self.__save_file
     
@@ -262,6 +263,7 @@ class RecordVoiceDialog(BaseDialog):
     def __cancel__(self, *args):
         Couroutine.instance.stop("record")
         self.__audio_player.pause()
+        self.__audio_player.free()
         self.__save_file = None
         self.cancel()
     
